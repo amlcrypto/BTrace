@@ -1,0 +1,48 @@
+import asyncio
+
+from aiogram.bot.bot import Bot
+from aiogram.contrib.fsm_storage.memory import MemoryStorage
+from aiogram.dispatcher.dispatcher import Dispatcher
+from aiogram.dispatcher.filters import Command
+
+from callbacks.addresses import get_address, get_blockchain, get_name
+from callbacks.base import handle_cancel, handle_start
+from callbacks.clusters import handle_cluster_detail, add_group, handle_rename_cluster_set_name, \
+    handle_rename_cluster, handle_view_cluster_addresses, handle_mute_cluster, handle_delete_cluster, \
+    handle_add_address
+from callbacks.main_menu import handle_help, handle_profile, handle_groups, handle_group_add
+from config import settings
+from handlers.handler_filters import CallbackDataActionFilter
+from handlers.states import AddClusterState, RenameClusterState, AddAddressState
+
+bot = Bot(token=settings.TOKEN, parse_mode='HTML')
+
+storage = MemoryStorage()
+disp = Dispatcher(bot=bot, storage=storage)
+
+disp.register_message_handler(handle_cancel, lambda x: x.text == 'Cancel')
+disp.register_message_handler(handle_start, Command(commands=['start'], prefixes='/'))
+disp.register_message_handler(handle_help, lambda x: x.text == 'Help')
+disp.register_message_handler(handle_profile, lambda x: x.text == 'My profile')
+disp.register_message_handler(handle_groups, lambda x: x.text == 'My clusters')
+disp.register_message_handler(handle_group_add, lambda x: x.text == 'Add cluster')
+disp.register_message_handler(handle_cluster_detail, regexp=r'/cluster_\d+')
+disp.register_message_handler(add_group, state=AddClusterState.cluster_name)
+disp.register_message_handler(handle_rename_cluster_set_name, state=RenameClusterState.cluster_name)
+disp.register_callback_query_handler(handle_rename_cluster, CallbackDataActionFilter(action='rename_cluster'))
+disp.register_callback_query_handler(handle_view_cluster_addresses, CallbackDataActionFilter(action='view_addresses'))
+disp.register_callback_query_handler(handle_mute_cluster, CallbackDataActionFilter(action='toggle_mute_cluster'))
+disp.register_callback_query_handler(handle_delete_cluster, CallbackDataActionFilter(action='delete_cluster'))
+disp.register_callback_query_handler(handle_add_address, CallbackDataActionFilter(action='add_address'))
+disp.register_message_handler(get_address, state=AddAddressState.wallet)
+disp.register_callback_query_handler(get_blockchain, state=AddAddressState.blockchain)
+disp.register_message_handler(get_blockchain, state=AddAddressState.blockchain)
+disp.register_message_handler(get_name, state=AddAddressState.name)
+
+
+async def main():
+    await disp.start_polling(disp)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())

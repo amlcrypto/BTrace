@@ -1,0 +1,11 @@
+.idea/
+venv/
+schema/__pycache__/
+database/__pycache__/
+handlers/__pycache__/
+versions/__pycache__/
+versions/versions/__pycache__/
+__pycache__/
+alembic.ini
+config.json
+text/*
