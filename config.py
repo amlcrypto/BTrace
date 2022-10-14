@@ -36,6 +36,7 @@ class DatabaseConfig(BaseModel):
 
 
 class Config(BaseModel):
+    """Config class. Contains all necessary settings values"""
     TOKEN: str
     databases: Dict[str, DatabaseConfig]
 

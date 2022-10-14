@@ -59,6 +59,8 @@ class Blockchain(Base):
     id = Column(SMALLINT(unsigned=True), primary_key=True)
     title = Column(VARCHAR(127), unique=True, nullable=False)
     tag = Column(VARCHAR(10), unique=True, nullable=False)
+    explorer_link_template = Column(VARCHAR(255))
+    explorer_title = Column(VARCHAR(255))
 
     addresses = relationship(
         'Address',

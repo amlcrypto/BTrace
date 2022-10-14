@@ -9,14 +9,20 @@ from schema.text_messages import TextMessages
 
 
 async def handle_help(message: types.Message):
+    """Handle help"""
     msg = TextMessages.get_message('help')
-    await message.answer(msg.rus)
+    await message.answer(msg.text)
 
 
 async def handle_profile(message: types.Message):
+    """Handle users profile"""
     handler = UsersHandler()
     user = handler.get_user_by_id(message.from_user.id)
-    await message.answer(str(user))
+    if not user:
+        msg = 'You are not registered yet. type "/start" to register'
+        await message.answer(msg)
+    else:
+        await message.answer(str(user))
 
 
 async def handle_group_add(message: types.Message, state: FSMContext):
@@ -32,5 +38,9 @@ async def handle_groups(message: types.Message):
     """Handle 'My clusters' command"""
     handler = UsersHandler()
     user = handler.get_user_by_id(message.from_user.id)
-    msg = KeyboardConstructor.get_clusters_list(user)
-    await message.answer(msg or "You don't added any clusters yet")
+    if not user:
+        msg = 'You are not registered yet. type "/start" to register'
+        await message.answer(msg)
+    else:
+        msg = KeyboardConstructor.get_clusters_list(user)
+        await message.answer(msg or "You don't added any clusters yet")

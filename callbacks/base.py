@@ -21,9 +21,9 @@ async def handle_start(message: types.Message):
     user_id = message.from_user.id
     user = handler.get_user_by_id(user_id)
     if not user:
-        user = handler.add_user(user_id)
+        handler.add_user(user_id)
 
     msg = TextMessages.get_message('start')
     buttons = KeyboardConstructor.get_base_reply_keyboard()
 
-    await message.answer(msg.rus.format(message.from_user.full_name), reply_markup=buttons)
+    await message.answer(msg.text.format(message.from_user.full_name), reply_markup=buttons)

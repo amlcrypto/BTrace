@@ -1,21 +1,20 @@
 """Bot handler filters"""
-from typing import Union
 
 from aiogram import types
 from aiogram.dispatcher.filters import BoundFilter
-from aiogram.dispatcher.filters.state import State, StatesGroup
 
-from handlers.states import AddAddressState, AddClusterState
 from schema.bot_schema import CallbackDataModel
 
 
 class CallbackDataActionFilter(BoundFilter):
+    """Filter by callback action param"""
     key = 'query_action'
 
     def __init__(self, action: str):
         self.action = action
 
     async def check(self, callback: types.CallbackQuery) -> bool:
+        """Get callback and check for action"""
         if not callback.data:
             return False
 

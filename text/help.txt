@@ -1,0 +1,35 @@
+Welcome to the help section.
+
+Main menu:
+
+My profile - Information about your profile
+- Balance - remaining balance. If the balance is zero, notifications won't be sent.
+- Registered - registration date
+- Active - your account status
+
+My clusters - List of clusters. Tracking addresses can be added to each cluster.
+When new transaction appears the notifications will be sent to Telegram Chat Bot
+with brief information of happened transaction.
+
+Add cluster - Adding a new cluster. When adding a cluster, you must specify its name.
+
+Cluster menu (opens when you click on the link next to the cluster name in the "My clusters" list):
+
+The message contains detailed information about the cluster - Name, number of addresses, monitoring status
+
+Options:
+- View addresses - show a list of cluster addresses
+- Add address - Add address to cluster. When adding an address, you must specify the address itself,
+choose blockchain, in which it is necessary to track transactions at the specified address,
+and also enter the name of the address
+- Mute/Unmute - disable (enable) transaction tracking for all addresses in the cluster
+- Rename - rename cluster
+- Delete - delete cluster. Tracked addresses will be also removed
+
+
+Address menu (opened by clicking on the link next to the address in the cluster address list):
+
+Options:
+- Rename - Change address name
+- Mute - disable (enable) transaction tracking for the given address
+- Delete - Remove an address from tracking and information about it

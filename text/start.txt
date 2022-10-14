@@ -1,0 +1,10 @@
+Welcome, {}!
+I will help you track token transactions at the addresses you are interested in.
+
+To view profile information, click "My profile"
+
+To add a cluster of addresses to tracking - "Add cluster"
+
+To view clusters and add addresses to them - "My clusters"
+
+For more information about functions - "Help"

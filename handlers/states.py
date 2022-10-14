@@ -17,3 +17,8 @@ class AddAddressState(StatesGroup):
 class RenameClusterState(StatesGroup):
     """State for rename cluster"""
     cluster_name = State()
+
+
+class RenameAddressState(StatesGroup):
+    """State for rename address"""
+    address_name = State()

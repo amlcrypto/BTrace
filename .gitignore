@@ -8,4 +8,3 @@ versions/versions/__pycache__/
 __pycache__/
 alembic.ini
 config.json
-text/*
