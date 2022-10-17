@@ -1,7 +1,7 @@
 """Database handlers"""
 import datetime
 import json
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 import pytz
 from sqlalchemy import and_
@@ -211,19 +211,23 @@ class AddressesHandler(DatabaseHandler):
         self.session.refresh(link)
         return link
 
-    def delete_address(self, link_id: int) -> int:
+    def delete_address(self, link_id: int) -> Tuple[int, bool]:
         """Delete address"""
         link: ClusterAddress = self.session.query(ClusterAddress).filter(
             ClusterAddress.id == link_id
         ).one_or_none()
         if not link:
             raise NotExist('Link not exist')
+        deleted = False
         cluster_id = link.cluster_id
         address_id = link.address_id
         self.session.delete(link)
         self.session.commit()
-        address: Address = self.session.query(Address).get(address_id)
+        address: Address = self.session.query(Address).options(
+            joinedload(Address.blockchain)
+        ).get(address_id)
         if not len(address.clusters):
+            deleted = (address.wallet, address.blockchain.id)
             self.session.delete(address)
             self.session.commit()
-        return cluster_id
+        return cluster_id, deleted

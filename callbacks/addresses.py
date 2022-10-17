@@ -7,6 +7,7 @@ from callbacks.clusters import handle_cluster_detail, handle_view_cluster_addres
 from exceptions import NotExist
 from handlers.bot_handlers import KeyboardConstructor
 from handlers.database_handlers import AddressesHandler
+from handlers.kafka_handlers import send_data
 from handlers.states import AddAddressState, RenameAddressState
 from schema.bot_schema import CallbackDataModel
 
@@ -45,6 +46,7 @@ async def get_name(message: types.Message, state: FSMContext):
     else:
         data = await state.get_data()
         cluster_id, wallet, blockchain = data.values()
+        send_data('add_address', wallet, blockchain)
         name = message.text
         handler = AddressesHandler()
         try:
@@ -123,7 +125,10 @@ async def handle_mute_address(callback: types.CallbackQuery):
 async def handle_delete_address(callback: types.CallbackQuery):
     """Delete address from cluster"""
     data = CallbackDataModel.parse_raw(callback.data)
-    cluster_id = AddressesHandler().delete_address(data.id)
+    cluster_id, deleted = AddressesHandler().delete_address(data.id)
+    if deleted:
+        address, blockchain = deleted
+        send_data(action='delete_address', wallet=address, blockchain_id=blockchain)
     data.action = 'view_addresses'
     data.id = cluster_id
     callback.data = data.json()

@@ -39,6 +39,7 @@ class Config(BaseModel):
     """Config class. Contains all necessary settings values"""
     TOKEN: str
     databases: Dict[str, DatabaseConfig]
+    kafka: str
 
     def get_database_src(self, name: str, sync: bool = True) -> str:
         """Returns src for specified database"""
