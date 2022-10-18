@@ -157,7 +157,9 @@ class AddressesHandler(DatabaseHandler):
 
     def get_address_by_wallet_and_blockchain(self, wallet: str, blockchain: int) -> Address:
         """Get address by wallet and blockchain"""
-        address = self.session.query(Address).filter(
+        address = self.session.query(Address).options(
+            joinedload(Address.blockchain)
+        ).filter(
             and_(
                 Address.wallet == wallet,
                 Address.blockchain_id == blockchain
@@ -231,3 +233,14 @@ class AddressesHandler(DatabaseHandler):
             self.session.delete(address)
             self.session.commit()
         return cluster_id, deleted
+
+    def get_links_by_address_id(self, address_id: int) -> List[ClusterAddress]:
+        """Get cluster_addresses by address_id"""
+        return self.session.query(ClusterAddress).options(
+            joinedload(ClusterAddress.cluster)
+        ).filter(
+            and_(
+                ClusterAddress.address_id == address_id,
+                ClusterAddress.watch == 1
+            )
+        ).all()

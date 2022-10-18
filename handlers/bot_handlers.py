@@ -1,11 +1,15 @@
 """Bot handlers module"""
+import datetime
+import json
 from typing import Tuple, List
 
-from aiogram import types
+from aiogram import types, Bot
 
 from database.models import User, Cluster, Blockchain, ClusterAddress
+from exceptions import NotExist
 from handlers.database_handlers import AddressesHandler
 from schema.bot_schema import CallbackDataModel
+from schema.kafka_schema import Incoming, Transaction
 
 
 class KeyboardConstructor:
@@ -142,3 +146,80 @@ class KeyboardConstructor:
             buttons.append(button)
         markup.inline_keyboard.append(buttons)
         return markup
+
+
+class NotificationHandler:
+
+    @staticmethod
+    def get_link(href: str, verbose: str) -> str:
+        """Returns link to message"""
+        return '<a href="{}">{}</a>'.format(
+            href,
+            verbose
+        )
+
+    @classmethod
+    def format_transaction_message(
+            cls,
+            wallet: str,
+            transaction: Transaction,
+            blockchain: Blockchain,
+            cluster: Cluster,
+            name: str
+    ) -> str:
+        """Returns message for transaction"""
+        src_name = ' ' + name if wallet == transaction.src else ''
+        dst_name = ' ' + name if wallet == transaction.dst else ''
+        msg = 'Cluster: {}\nBlockchain: {}\nSender: {}\nReceiver: {}\nVALUE: {:.2f} {}\nTIME (UTC): {}'.format(
+            cluster.name,
+            f"{blockchain.title} ({blockchain.tag})",
+            cls.get_link(
+                blockchain.explorer_link_template + transaction.src,
+                f'{transaction.src[:5]}...{transaction.src[-5:]}{src_name}'
+            ),
+            cls.get_link(
+                blockchain.explorer_link_template + transaction.dst,
+                f'{transaction.dst[:5]}...{transaction.dst[-5:]}{dst_name}'
+            ),
+            transaction.value,
+            transaction.token,
+            datetime.datetime.fromtimestamp(transaction.created_at).strftime(
+                '%b %d, %Y, %H:%M:%S'
+            )
+        )
+        return msg
+
+    @classmethod
+    async def handle_notification(cls, data: Incoming, bot: Bot):
+        """Handle notification"""
+        try:
+            addresses_handler = AddressesHandler()
+
+            address = addresses_handler.get_address_by_wallet_and_blockchain(
+                wallet=data.wallet,
+                blockchain=data.blockchain
+            )
+        except NotExist as e:
+            return data
+        else:
+            links = addresses_handler.get_links_by_address_id(address.id)
+
+            messages = []
+            chats = []
+            for transaction in data.transactions:
+                for link in links:
+                    messages.append(
+                        cls.format_transaction_message(
+                            wallet=data.wallet,
+                            transaction=transaction,
+                            blockchain=address.blockchain,
+                            cluster=link.cluster,
+                            name=link.address_name
+                        )
+                    )
+                    link_chats = json.loads(link.cluster.chats)
+                    chats.extend(link_chats)
+
+            for msg in messages:
+                for chat in set(chats):
+                    await bot.send_message(chat_id=chat, text=msg, parse_mode='HTML', disable_web_page_preview=True)

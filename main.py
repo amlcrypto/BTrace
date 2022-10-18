@@ -13,6 +13,7 @@ from callbacks.clusters import handle_cluster_detail, add_group, handle_rename_c
     handle_add_address, handle_back_to_cluster
 from callbacks.main_menu import handle_help, handle_profile, handle_groups, handle_group_add
 from config import settings
+from handlers.kafka_handlers import consume_data
 from handlers.handler_filters import CallbackDataActionFilter
 from handlers.states import AddClusterState, RenameClusterState, AddAddressState, RenameAddressState
 
@@ -48,7 +49,11 @@ disp.register_callback_query_handler(handle_delete_address, CallbackDataActionFi
 
 
 async def main():
-    await disp.start_polling(disp)
+
+    await asyncio.gather(
+        disp.start_polling(disp),
+        consume_data(bot)
+    )
 
 
 if __name__ == '__main__':
