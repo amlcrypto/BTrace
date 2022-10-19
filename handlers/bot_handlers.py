@@ -5,9 +5,9 @@ from typing import Tuple, List
 
 from aiogram import types, Bot
 
-from database.models import User, Cluster, Blockchain, ClusterAddress
+from database.models import User, Cluster, Blockchain, ClusterAddress, Address
 from exceptions import NotExist
-from handlers.database_handlers import AddressesHandler
+from handlers.database_handlers import AddressesHandler, ClusterHandler
 from schema.bot_schema import CallbackDataModel
 from schema.kafka_schema import Incoming, Transaction
 
@@ -56,8 +56,9 @@ class KeyboardConstructor:
         """
         msg = ['<b>Addresses:</b>']
         for link in cluster.addresses:
-            row = f"{link.address.wallet[:5]}...{link.address.wallet[-5:]} /address_{link.id}"
-            msg.append(row)
+            if link.address.add_success:
+                row = f"{link.address.wallet[:5]}...{link.address.wallet[-5:]} /address_{link.id}"
+                msg.append(row)
 
         markup = types.InlineKeyboardMarkup(inline_keyboard=[])
         buttons = []
@@ -76,9 +77,11 @@ class KeyboardConstructor:
         """
         msg = []
         for cluster in user.clusters:
+            ids = [x.address_id for x in cluster.addresses]
+            len_addresses = AddressesHandler().get_added_count(ids)
             row = '{} ({}) /cluster_{}'.format(
                     cluster.name,
-                    len(cluster.addresses),
+                    len_addresses,
                     cluster.id
                 )
             msg.append(row)
@@ -114,9 +117,10 @@ class KeyboardConstructor:
     @classmethod
     def get_cluster_detail(cls, cluster: Cluster) -> Tuple[str, types.InlineKeyboardMarkup]:
         """Returns cluster detail message and inline keyboard"""
+        ids = [x.address_id for x in cluster.addresses]
         msg = '<b>Name:</b>\n{}\n<b>Addresses count:</b> {}\n<b>Watching: </b>{}'.format(
             cluster.name,
-            len(cluster.addresses),
+            AddressesHandler().get_added_count(ids),
             cluster.watch
         )
         buttons_data = [
@@ -189,6 +193,76 @@ class NotificationHandler:
         )
         return msg
 
+    @staticmethod
+    def get_auto_add_message(wallets: List[str], blockchain: str, name: str) -> str:
+        """Create message about auto added addresses"""
+        msg = ['<b>Automatically added to cluster {}:</b>'.format(name)]
+        for wallet in wallets:
+            msg.append('{} ({})\n'.format(
+                f"{wallet[:5]}...{wallet[-5:]}",
+                blockchain
+            ))
+        return '\n'.join(msg)
+
+    @classmethod
+    async def alert(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
+        """Handle alert incoming message"""
+        links = addresses_handler.get_links_by_address_id(address.id)
+
+        messages = {}
+        for link in links:
+            link_chats = json.loads(link.cluster.chats)
+            if data.auto_add:
+                add_notify = cls.get_auto_add_message(data.auto_add, address.blockchain.tag, link.cluster.name)
+            else:
+                add_notify = None
+
+            for transaction in data.transactions:
+                msg = cls.format_transaction_message(
+                    wallet=data.wallet,
+                    transaction=transaction,
+                    blockchain=address.blockchain,
+                    cluster=link.cluster,
+                    name=link.address_name
+                )
+
+                for chat in link_chats:
+                    send_list = messages.get(chat)
+                    if not send_list:
+                        messages[chat] = [msg]
+                    else:
+                        send_list.append(msg)
+            if add_notify:
+                for chat in link_chats:
+                    messages[chat].append(add_notify)
+
+            for wallet in data.auto_add:
+                addresses_handler.add_address(link.cluster_id, wallet, data.blockchain)
+
+        for chat, msgs in messages.items():
+            for msg in msgs:
+                await bot.send_message(chat_id=chat, text=msg, parse_mode='HTML', disable_web_page_preview=True)
+
+    @classmethod
+    async def report(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
+        """Handle report"""
+
+        if data.action == 'add_address':
+            if data.state == 1:
+                result = 'added to tracing'
+                name, chats = addresses_handler.add_success(address, data.cluster_id, True)
+            else:
+                result = 'Something goes wrong, please contact to administration'
+                cluster = ClusterHandler().get_cluster_by_id(data.cluster_id)
+                chats = json.loads(cluster.chats)
+                name = cluster.name
+            blockchain = addresses_handler.get_blockchain_by_id(data.blockchain)
+            for chat in chats:
+                await bot.send_message(
+                    chat_id=chat,
+                    text=f'{name}:\n{data.wallet[:5]}...{data.wallet[-5:]} ({blockchain.tag})\n{result}'
+                )
+
     @classmethod
     async def handle_notification(cls, data: Incoming, bot: Bot):
         """Handle notification"""
@@ -199,27 +273,10 @@ class NotificationHandler:
                 wallet=data.wallet,
                 blockchain=data.blockchain
             )
-        except NotExist as e:
+        except NotExist:
             return data
+        if data.action == 'alert':
+            handler = cls.alert
         else:
-            links = addresses_handler.get_links_by_address_id(address.id)
-
-            messages = []
-            chats = []
-            for transaction in data.transactions:
-                for link in links:
-                    messages.append(
-                        cls.format_transaction_message(
-                            wallet=data.wallet,
-                            transaction=transaction,
-                            blockchain=address.blockchain,
-                            cluster=link.cluster,
-                            name=link.address_name
-                        )
-                    )
-                    link_chats = json.loads(link.cluster.chats)
-                    chats.extend(link_chats)
-
-            for msg in messages:
-                for chat in set(chats):
-                    await bot.send_message(chat_id=chat, text=msg, parse_mode='HTML', disable_web_page_preview=True)
+            handler = cls.report
+        await handler(address, data, bot, addresses_handler)

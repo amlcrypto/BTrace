@@ -3,8 +3,8 @@ from aiogram import types
 from aiogram.dispatcher import FSMContext
 
 from callbacks.base import handle_cancel
-from callbacks.clusters import handle_cluster_detail, handle_view_cluster_addresses
-from exceptions import NotExist
+from callbacks.clusters import handle_view_cluster_addresses
+from exceptions import NotExist, InvalidName
 from handlers.bot_handlers import KeyboardConstructor
 from handlers.database_handlers import AddressesHandler
 from handlers.kafka_handlers import send_data
@@ -43,24 +43,24 @@ async def get_name(message: types.Message, state: FSMContext):
     """Get name and add address to database"""
     if message.text == 'Cancel':
         await handle_cancel(message, state)
+    elif len(message.text) > 100:
+        await message.answer('Address too long (must be max 100 characters)')
     else:
         data = await state.get_data()
         cluster_id, wallet, blockchain = data.values()
-        send_data('add_address', wallet, blockchain)
         name = message.text
         handler = AddressesHandler()
         try:
             handler.add_address(cluster_id, wallet, blockchain, name)
-        except NotExist as e:
+            await send_data('add_address', wallet, blockchain, cluster_id=cluster_id)
+        except (NotExist, InvalidName) as e:
             msg = str(e)
+            await message.answer(msg)
         else:
-            msg = 'Success'
-
-        buttons = KeyboardConstructor.get_base_reply_keyboard()
-        await state.reset_state(with_data=True)
-        await message.answer(msg, reply_markup=buttons)
-        message.text = 'cluster_{}'.format(cluster_id)
-        await handle_cluster_detail(message)
+            msg = 'Address sent to trace. Please wait for confirm message'
+            buttons = KeyboardConstructor.get_base_reply_keyboard()
+            await state.reset_state(with_data=True)
+            await message.answer(msg, reply_markup=buttons)
 
 
 async def handle_address_detail(message: types.Message):
@@ -92,17 +92,17 @@ async def handle_rename_address_set_name(message: types.Message, state: FSMConte
         await handle_cancel(message, state)
     else:
         data = await state.get_data()
-        result = AddressesHandler().rename_address(data['link_id'], message.text)
-        markup = KeyboardConstructor.get_base_reply_keyboard()
-        if result is None:
+        try:
+            AddressesHandler().rename_address(data['link_id'], message.text)
+        except (NotExist, InvalidName) as e:
+            await message.answer(str(e))
+        else:
+            markup = KeyboardConstructor.get_base_reply_keyboard()
             await state.reset_state(with_data=True)
             message.text = 'address_{}'.format(data['link_id'])
             msg = 'Success'
             await message.answer(msg, reply_markup=markup)
             await handle_address_detail(message)
-        else:
-            msg = 'Error. Please try again.'
-            await message.answer(msg, reply_markup=markup)
 
 
 async def handle_mute_address(callback: types.CallbackQuery):
@@ -128,7 +128,7 @@ async def handle_delete_address(callback: types.CallbackQuery):
     cluster_id, deleted = AddressesHandler().delete_address(data.id)
     if deleted:
         address, blockchain = deleted
-        send_data(action='delete_address', wallet=address, blockchain_id=blockchain)
+        await send_data(action='delete_address', wallet=address, blockchain_id=blockchain, cluster_id=cluster_id)
     data.action = 'view_addresses'
     data.id = cluster_id
     callback.data = data.json()

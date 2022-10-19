@@ -79,6 +79,7 @@ class Address(Base):
         SMALLINT(unsigned=True),
         ForeignKey('blockchains.id', ondelete='CASCADE', onupdate='CASCADE')
     )
+    add_success = Column(BOOLEAN(create_constraint=True), default=True)
 
     constraint = UniqueConstraint(
         wallet, blockchain_id

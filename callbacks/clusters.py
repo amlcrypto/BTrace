@@ -4,7 +4,7 @@ from aiogram.dispatcher import FSMContext
 
 from callbacks.base import handle_cancel
 from callbacks.main_menu import handle_groups
-from exceptions import NotExist
+from exceptions import NotExist, InvalidName
 from handlers.bot_handlers import KeyboardConstructor
 from handlers.database_handlers import ClusterHandler
 from handlers.states import RenameClusterState, AddAddressState
@@ -41,17 +41,17 @@ async def handle_rename_cluster_set_name(message: types.Message, state: FSMConte
     else:
         data = await state.get_data()
         handler = ClusterHandler()
-        result = handler.rename_cluster(data['cluster_id'], message.text)
-        markup = KeyboardConstructor.get_base_reply_keyboard()
-        if result is None:
+        try:
+            handler.rename_cluster(data['cluster_id'], message.text)
+        except (NotExist, InvalidName) as e:
+            await message.answer(str(e))
+        else:
+            markup = KeyboardConstructor.get_base_reply_keyboard()
             await state.reset_state(with_data=True)
             message.text = 'cluster_{}'.format(data['cluster_id'])
             msg = 'Success'
             await message.answer(msg, reply_markup=markup)
             await handle_cluster_detail(message)
-        else:
-            msg = 'Error. Please try again. Note: length of name must be in [1, 28]'
-            await message.answer(msg, reply_markup=markup)
 
 
 async def handle_cluster_detail(message: types.Message):
@@ -74,14 +74,14 @@ async def add_group(message: types.Message, state: FSMContext):
 
     else:
         handler = ClusterHandler()
-        result = handler.add_cluster(message.from_user.id, message.text)
-        if result is None:
+        try:
+            handler.add_cluster(message.from_user.id, message.text)
+        except (NotExist, InvalidName) as e:
+            await message.answer(str(e))
+        else:
             buttons = KeyboardConstructor.get_base_reply_keyboard()
             await state.reset_state(with_data=True)
             await message.answer('Success', reply_markup=buttons)
-        else:
-            msg = 'Error. Please try again. Note: length of name must be in [1, 28]'
-            await message.answer(msg)
 
 
 async def handle_mute_cluster(callback: types.CallbackQuery):

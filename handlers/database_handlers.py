@@ -9,7 +9,7 @@ from sqlalchemy.orm import joinedload
 
 from database.factory import DatabaseFactory
 from database.models import User, Cluster, Address, Blockchain, ClusterAddress
-from exceptions import NotExist
+from exceptions import NotExist, InvalidName
 
 
 class DatabaseHandler:
@@ -23,11 +23,10 @@ class DatabaseHandler:
         self.session.close()
 
     @staticmethod
-    def check_name(name: str) -> bool:
+    def check_name(name: str) -> None:
         """Validate name"""
         if not name or len(name) > 28:
-            return False
-        return True
+            raise InvalidName('Name too long (max 28 char)')
 
 
 class UsersHandler(DatabaseHandler):
@@ -64,36 +63,34 @@ class ClusterHandler(DatabaseHandler):
     def __init__(self):
         super(ClusterHandler, self).__init__(self.__db_name)
 
-    def add_cluster(self, user_id: int, name: str) -> Optional[int]:
+    def add_cluster(self, user_id: int, name: str) -> None:
         """Add new cluster"""
-        if self.check_name(name):
-            cluster = Cluster(
-                name=name,
-                user_id=user_id,
-                chats=json.dumps([user_id])
-            )
-            self.session.add(cluster)
-            self.session.commit()
-        else:
-            return -1
+        self.check_name(name)
+        cluster = Cluster(
+            name=name,
+            user_id=user_id,
+            chats=json.dumps([user_id])
+        )
+        self.session.add(cluster)
+        self.session.commit()
 
     def get_cluster_by_id(self, cluster_id: int) -> Cluster:
         """Get cluster by id"""
-        return self.session.query(Cluster).filter(Cluster.id == cluster_id).one_or_none()
+        return self.session.query(Cluster).filter(Cluster.id == cluster_id).options(
+            joinedload(Cluster.addresses)
+        ).one_or_none()
 
-    def rename_cluster(self, cluster_id: int, name: str) -> Optional[int]:
+    def rename_cluster(self, cluster_id: int, name: str) -> None:
         """Rename cluster"""
-        if self.check_name(name):
-            cluster: Cluster = self.session.query(Cluster).filter(
-                Cluster.id == cluster_id
-            ).one_or_none()
-            if not cluster:
-                raise NotExist(f'Cluster not exist')
-            cluster.name = name
-            self.session.add(cluster)
-            self.session.commit()
-        else:
-            return -1
+        self.check_name(name)
+        cluster: Cluster = self.session.query(Cluster).filter(
+            Cluster.id == cluster_id
+        ).one_or_none()
+        if not cluster:
+            raise NotExist(f'Cluster not exist')
+        cluster.name = name
+        self.session.add(cluster)
+        self.session.commit()
 
     def toggle_mute(self, cluster_id: int) -> Cluster:
         """Toggle watch property for cluster by id"""
@@ -127,6 +124,22 @@ class AddressesHandler(DatabaseHandler):
     def __init__(self):
         super(AddressesHandler, self).__init__(self.__db_name)
 
+    def get_added_count(self, ids: List[int]) -> int:
+        """Returns count of addresses for cluster"""
+        return self.session.query(Address).filter(Address.id.in_(ids)).filter(
+            Address.add_success.is_(True)
+        ).count()
+
+    def add_success(self, address: Address, cluster_id: int, state: bool) -> Tuple[str, List[str]]:
+        """Set success add value"""
+        address.add_success = state
+        self.session.add(address)
+        self.session.commit()
+        self.session.refresh(address)
+        cluster = self.session.query(Cluster).filter(Cluster.id == cluster_id).first()
+        chats = json.loads(cluster.chats)
+        return cluster.name, chats
+
     def get_blockchains(self) -> List[Blockchain]:
         """Get list of exist blockchains"""
         response = self.session.query(Blockchain).all()
@@ -148,6 +161,7 @@ class AddressesHandler(DatabaseHandler):
 
     def rename_address(self, address_id: int, name: str) -> Optional[int]:
         """Rename address"""
+        self.check_name(name)
         link: ClusterAddress = self.session.query(ClusterAddress).filter(ClusterAddress.id == address_id).one_or_none()
         if not link:
             return -1
@@ -171,6 +185,9 @@ class AddressesHandler(DatabaseHandler):
 
     def add_address(self, cluster_id: int, wallet: str, blockchain: int, name: str = None) -> None:
         """Add new address"""
+        if name:
+            self.check_name(name)
+
         cluster = self.session.query(Cluster).filter(Cluster.id == cluster_id).one_or_none()
         if not cluster:
             raise NotExist('Cluster not exist')
@@ -186,7 +203,8 @@ class AddressesHandler(DatabaseHandler):
 
             address = Address(
                 wallet=wallet,
-                blockchain=blockchain
+                blockchain=blockchain,
+                add_success=False
             )
         link = ClusterAddress(
             address=address,

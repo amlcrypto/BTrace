@@ -9,3 +9,8 @@ class DatabaseConfigError(Exception):
 class NotExist(Exception):
     """Raises when database instance not exist"""
     pass
+
+
+class InvalidName(Exception):
+    """Raises when name don't pass check length"""
+    pass

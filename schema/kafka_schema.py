@@ -1,5 +1,5 @@
 """Kafka data models"""
-from typing import List
+from typing import List, Optional
 
 from pydantic import BaseModel
 
@@ -9,6 +9,7 @@ class Outgoing(BaseModel):
     action: str
     wallet: str
     blockchain: int
+    cluster_id: int
 
 
 class Transaction(BaseModel):
@@ -16,12 +17,16 @@ class Transaction(BaseModel):
     src: str
     dst: str
     value: float
-    token: str = 'EVER'
+    token: str
     created_at: float
 
 
 class Incoming(BaseModel):
     """Incoming message"""
+    action: str
+    state: Optional[int]
+    cluster_id: Optional[int]
     blockchain: int
     wallet: str
     transactions: List[Transaction]
+    auto_add: List[str]
