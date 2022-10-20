@@ -14,7 +14,9 @@ class User(Base):
 
     id = Column(BIGINT(unsigned=False), primary_key=True, autoincrement=False)
     created_at = Column(DATETIME)
-    balance = Column(NUMERIC(precision=2, asdecimal=True), nullable=False, default=0)
+    balance = Column(NUMERIC(precision=10, asdecimal=True), nullable=False, default=0)
+    notification_cost = Column(NUMERIC(precision=10, asdecimal=True), nullable=False, default=1)
+    notifications_remain = Column(BIGINT(unsigned=True), nullable=False)
     is_active = Column(BOOLEAN(create_constraint=True))
 
     clusters = relationship(
@@ -23,9 +25,17 @@ class User(Base):
         uselist=True
     )
 
+    alerts = relationship(
+        'AlertHistory',
+        back_populates='user',
+        uselist=True
+    )
+
     def __str__(self) -> str:
-        return 'Balance: {:.2f}\nRegistered: {}\nActive: {}'.format(
+        return 'Balance: {:.2f}\nNotification Cost: {:.2f}\nNotification remain: {}\nRegistered: {}\nActive: {}'.format(
             self.balance,
+            self.notification_cost,
+            self.notifications_remain,
             self.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'),
             self.is_active
         )
@@ -116,5 +126,21 @@ class ClusterAddress(Base):
     address = relationship(
         Address,
         back_populates='clusters',
+        uselist=False
+    )
+
+
+class AlertHistory(Base):
+    """Alert history"""
+    __tablename__ = 'alert_history'
+    id = Column(BIGINT(unsigned=True), primary_key=True)
+    user_id = Column(BIGINT, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
+    blockchain = Column(VARCHAR(100), nullable=False)
+    wallet = Column(VARCHAR(100), nullable=False)
+    balance_delta = Column(NUMERIC(precision=10, asdecimal=True), nullable=False)
+
+    user = relationship(
+        User,
+        back_populates='alerts',
         uselist=False
     )
