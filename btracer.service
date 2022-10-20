@@ -1,0 +1,13 @@
+[Unit]
+Description=BTracer telegram bot
+After=network.target
+
+[Service]
+User=stanislav
+Group=stanislav
+WorkingDirectory=/opt/scripts/BTrace
+Environment="PATH=/opt/scripts/BTrace/venv/bin"
+ExecStart=/opt/scripts/BTrace/venv/bin/python main.py
+
+[Install]
+WantedBy=multi-user.target

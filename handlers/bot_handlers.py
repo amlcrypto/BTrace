@@ -7,7 +7,7 @@ from aiogram import types, Bot
 
 from database.models import User, Cluster, Blockchain, ClusterAddress, Address
 from exceptions import NotExist
-from handlers.database_handlers import AddressesHandler, ClusterHandler
+from handlers.database_handlers import AddressesHandler, ClusterHandler, UsersHandler
 from schema.bot_schema import CallbackDataModel
 from schema.kafka_schema import Incoming, Transaction
 
@@ -207,6 +207,8 @@ class NotificationHandler:
     @classmethod
     async def alert(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
         """Handle alert incoming message"""
+        users_handler = UsersHandler()
+
         links = addresses_handler.get_links_by_address_id(address.id)
 
         messages = {}
@@ -217,6 +219,8 @@ class NotificationHandler:
             else:
                 add_notify = None
 
+            user = users_handler.get_user_by_id(link.cluster.user_id)
+
             for transaction in data.transactions:
                 msg = cls.format_transaction_message(
                     wallet=data.wallet,
@@ -225,13 +229,13 @@ class NotificationHandler:
                     cluster=link.cluster,
                     name=link.address_name
                 )
-
-                for chat in link_chats:
-                    send_list = messages.get(chat)
-                    if not send_list:
-                        messages[chat] = [msg]
-                    else:
-                        send_list.append(msg)
+                if user.is_active:
+                    for chat in link_chats:
+                        send_list = messages.get(chat)
+                        if not send_list:
+                            messages[chat] = [msg]
+                        else:
+                            send_list.append(msg)
             if add_notify:
                 for chat in link_chats:
                     messages[chat].append(add_notify)
