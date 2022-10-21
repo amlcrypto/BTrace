@@ -8,7 +8,7 @@ from sqlalchemy import and_
 from sqlalchemy.orm import joinedload
 
 from database.factory import DatabaseFactory
-from database.models import User, Cluster, Address, Blockchain, ClusterAddress
+from database.models import User, Cluster, Address, Blockchain, ClusterAddress, AlertHistory
 from exceptions import NotExist, InvalidName
 
 
@@ -47,9 +47,27 @@ class UsersHandler(DatabaseHandler):
         user = User(
             id=user_id,
             created_at=datetime.datetime.now(tz=pytz.UTC),
-            balance=0,
+            balance=1000,
+            notification_cost=1,
+            notifications_remain=1000,
             is_active=True
         )
+        self.session.add(user)
+        self.session.commit()
+        self.session.refresh(user)
+        return user
+
+    def reduce_balance(self, user: User, blkchn: str, wallet: str) -> User:
+        """Reduce user balance whet sent notification"""
+        user.notifications_remain -= 1
+        user.balance -= user.notification_cost
+        alert_data = AlertHistory(
+            user=user,
+            blockchain=blkchn,
+            wallet=wallet,
+            balance_delta=user.notification_cost
+        )
+        self.session.add(alert_data)
         self.session.add(user)
         self.session.commit()
         self.session.refresh(user)

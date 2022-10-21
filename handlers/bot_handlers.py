@@ -211,7 +211,6 @@ class NotificationHandler:
 
         links = addresses_handler.get_links_by_address_id(address.id)
 
-        messages = {}
         for link in links:
             link_chats = json.loads(link.cluster.chats)
             if data.auto_add:
@@ -229,23 +228,17 @@ class NotificationHandler:
                     cluster=link.cluster,
                     name=link.address_name
                 )
-                if user.is_active:
+                if user.is_active and user.notifications_remain:
                     for chat in link_chats:
-                        send_list = messages.get(chat)
-                        if not send_list:
-                            messages[chat] = [msg]
-                        else:
-                            send_list.append(msg)
+                        await bot.send_message(chat, msg, parse_mode='HTML', disable_web_page_preview=True)
+                    user = users_handler.reduce_balance(user, address.blockchain.title, data.wallet)
+
             if add_notify:
                 for chat in link_chats:
-                    messages[chat].append(add_notify)
+                    await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
 
             for wallet in data.auto_add:
                 addresses_handler.add_address(link.cluster_id, wallet, data.blockchain)
-
-        for chat, msgs in messages.items():
-            for msg in msgs:
-                await bot.send_message(chat_id=chat, text=msg, parse_mode='HTML', disable_web_page_preview=True)
 
     @classmethod
     async def report(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
