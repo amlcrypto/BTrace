@@ -31,8 +31,8 @@ def upgrade() -> None:
     op.create_table('users',
     sa.Column('id', mysql.BIGINT(), autoincrement=False, nullable=False),
     sa.Column('created_at', mysql.DATETIME(), nullable=True),
-    sa.Column('balance', mysql.NUMERIC(), nullable=False),
-    sa.Column('notification_cost', mysql.NUMERIC(), nullable=False),
+    sa.Column('balance', mysql.NUMERIC(precision=10, scale=2), nullable=False),
+    sa.Column('notification_cost', mysql.NUMERIC(precision=10, scale=2), nullable=False),
     sa.Column('notifications_remain', mysql.BIGINT(unsigned=True), nullable=False),
     sa.Column('is_active', sa.BOOLEAN(create_constraint=True), nullable=True),
     sa.PrimaryKeyConstraint('id')
@@ -51,7 +51,7 @@ def upgrade() -> None:
     sa.Column('user_id', mysql.BIGINT(), nullable=True),
     sa.Column('blockchain', mysql.VARCHAR(length=100), nullable=False),
     sa.Column('wallet', mysql.VARCHAR(length=100), nullable=False),
-    sa.Column('balance_delta', mysql.NUMERIC(), nullable=False),
+    sa.Column('balance_delta', mysql.NUMERIC(precision=10, scale=2), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], onupdate='CASCADE', ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
