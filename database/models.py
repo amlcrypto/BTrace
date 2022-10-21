@@ -138,6 +138,7 @@ class AlertHistory(Base):
     blockchain = Column(VARCHAR(100), nullable=False)
     wallet = Column(VARCHAR(100), nullable=False)
     balance_delta = Column(NUMERIC, nullable=False)
+    created_at = Column(DATETIME)
 
     user = relationship(
         User,

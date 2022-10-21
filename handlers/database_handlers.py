@@ -65,7 +65,8 @@ class UsersHandler(DatabaseHandler):
             user=user,
             blockchain=blkchn,
             wallet=wallet,
-            balance_delta=user.notification_cost
+            balance_delta=user.notification_cost,
+            created_at=datetime.datetime.now()
         )
         self.session.add(alert_data)
         self.session.add(user)
