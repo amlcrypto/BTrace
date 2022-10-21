@@ -1,10 +1,12 @@
 """Bot handlers module"""
+import csv
 import datetime
 import json
 from typing import Tuple, List
 
 from aiogram import types, Bot
 
+from config import PATH
 from database.models import User, Cluster, Blockchain, ClusterAddress, Address
 from exceptions import NotExist
 from handlers.database_handlers import AddressesHandler, ClusterHandler, UsersHandler
@@ -14,6 +16,26 @@ from schema.kafka_schema import Incoming, Transaction
 
 class KeyboardConstructor:
     """Handler to create messages with keyboards or single keyboards"""
+    @classmethod
+    def create_alert_history_report(cls, user_id: int) -> str:
+        """Creates report for user alert history"""
+        history = UsersHandler().get_alert_history(user_id)
+        filename = f'{PATH}/history_{user_id}.csv'
+        with open(filename, 'w', encoding='utf-8') as f:
+            keys = ['Blockchain', 'Wallet', 'Balance delta', 'Date']
+            writer = csv.DictWriter(f, fieldnames=keys)
+            writer.writeheader()
+            for item in history:
+                alert_data = f"{item.created_at.strftime('%Y-%m-%d %H:%M:%S')} UTC" if item.created_at else 'N/A'
+                row = (
+                    item.blockchain,
+                    item.wallet,
+                    '{:.2f}'.format(item.balance_delta),
+                    alert_data
+                )
+                writer.writerow(dict(zip(keys, row)))
+        return filename
+
     @staticmethod
     def get_inline_button(text: str, action: str, data: int) -> types.InlineKeyboardButton:
         """InlineButton factory"""
@@ -238,7 +260,7 @@ class NotificationHandler:
                     await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
 
             for wallet in data.auto_add:
-                addresses_handler.add_address(link.cluster_id, wallet, data.blockchain)
+                addresses_handler.add_address(link.cluster_id, wallet, data.blockchain, auto=True)
 
     @classmethod
     async def report(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):

@@ -8,6 +8,7 @@ from exceptions import NotExist, InvalidName
 from handlers.bot_handlers import KeyboardConstructor
 from handlers.database_handlers import ClusterHandler
 from handlers.states import RenameClusterState, AddAddressState
+from logger import LOGGER
 from schema.bot_schema import CallbackDataModel
 
 
@@ -22,6 +23,7 @@ async def handle_view_cluster_addresses(callback: types.CallbackQuery):
         await handle_groups(callback.message)
     else:
         msg, markup = KeyboardConstructor.get_addresses_list(cluster)
+        await callback.answer('')
         await callback.message.answer(msg, reply_markup=markup)
 
 
@@ -31,6 +33,7 @@ async def handle_rename_cluster(callback: types.CallbackQuery, state: FSMContext
     await state.set_state(RenameClusterState.cluster_name)
     await state.update_data(cluster_id=data.id)
     msg = 'Input new cluster name'
+    await callback.answer('')
     await callback.message.answer(msg, reply_markup=KeyboardConstructor.get_cancel_button())
 
 
@@ -108,8 +111,10 @@ async def handle_delete_cluster(callback: types.CallbackQuery):
     try:
         handler.delete_cluster(data.id)
     except NotExist:
+        await callback.answer('')
         await callback.message.answer('Cluster not exist')
     else:
+        await callback.answer('')
         await callback.message.answer('Success')
     callback.message.from_user = callback.from_user
     await handle_groups(callback.message)
@@ -122,6 +127,7 @@ async def handle_add_address(callback: types.CallbackQuery, state: FSMContext):
     await state.update_data(cluster_id=data.id)
     msg = 'Input address'
     buttons = KeyboardConstructor.get_cancel_button()
+    await callback.answer('')
     await callback.message.answer(msg, reply_markup=buttons)
 
 

@@ -36,6 +36,7 @@ async def get_blockchain(callback: types.CallbackQuery, state: FSMContext):
         await state.update_data(blockchain=data.id)
         await state.set_state(AddAddressState.name)
         msg = 'Input name'
+        await callback.answer('')
         await callback.message.answer(msg)
 
 
@@ -83,6 +84,7 @@ async def handle_rename_address(callback: types.CallbackQuery, state: FSMContext
     await state.set_state(RenameAddressState.address_name)
     await state.update_data(link_id=data.id)
     msg = 'Input new address name'
+    await callback.answer('')
     await callback.message.answer(msg, reply_markup=KeyboardConstructor.get_cancel_button())
 
 
@@ -113,6 +115,7 @@ async def handle_mute_address(callback: types.CallbackQuery):
     except NotExist as e:
         msg = str(e)
         markup = KeyboardConstructor.get_base_reply_keyboard()
+        await callback.answer('')
         await callback.message.answer(msg, reply_markup=markup)
     else:
         msg, markup = KeyboardConstructor.get_address_detail(address)

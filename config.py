@@ -48,6 +48,6 @@ class Config(BaseModel):
             raise DatabaseConfigError(f"Database {name} config data not exist")
         return db.get_src(sync)
 
-
-with open(f"{Path(__file__).resolve().parent}/config.json", 'r', encoding='utf-8') as f:
+PATH = Path(__file__).resolve().parent
+with open(f"{PATH}/config.json", 'r', encoding='utf-8') as f:
     settings = Config.parse_raw(f.read())

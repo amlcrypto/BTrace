@@ -74,6 +74,10 @@ class UsersHandler(DatabaseHandler):
         self.session.refresh(user)
         return user
 
+    def get_alert_history(self, user_id: int) -> List[AlertHistory]:
+        """Returns list of alerts"""
+        return self.session.query(AlertHistory).filter(AlertHistory.user_id == user_id).all()
+
 
 class ClusterHandler(DatabaseHandler):
     """Clusters database handlers"""
@@ -202,7 +206,7 @@ class AddressesHandler(DatabaseHandler):
             raise NotExist('Address not exist')
         return address
 
-    def add_address(self, cluster_id: int, wallet: str, blockchain: int, name: str = None) -> None:
+    def add_address(self, cluster_id: int, wallet: str, blockchain: int, name: str = None, auto: bool = False) -> None:
         """Add new address"""
         if name:
             self.check_name(name)
@@ -223,16 +227,23 @@ class AddressesHandler(DatabaseHandler):
             address = Address(
                 wallet=wallet,
                 blockchain=blockchain,
-                add_success=False
+                add_success=auto
             )
-        link = ClusterAddress(
-            address=address,
-            cluster=cluster,
-            watch=True,
-            address_name=name or f"{wallet[:7]}...{wallet[-7:]}"
-        )
-        self.session.add(link)
-        self.session.commit()
+        link = self.session.query(ClusterAddress).filter(
+            and_(
+                ClusterAddress.address_id == address.id,
+                ClusterAddress.cluster_id == cluster_id
+            )
+        ).count()
+        if not link:
+            link = ClusterAddress(
+                address=address,
+                cluster=cluster,
+                watch=True,
+                address_name=name or f"{wallet[:7]}...{wallet[-7:]}"
+            )
+            self.session.add(link)
+            self.session.commit()
 
     def toggle_mute_address(self, address_id: int) -> ClusterAddress:
         """Toggle mute/unmute"""
