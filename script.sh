@@ -1,11 +1,11 @@
-#1/bin/bash
+#!/bin/bash
 
-source /opt/scripts/Btrace/venv/bin/activate
+source /opt/scripts/BTrace/venv/bin/activate
 cd /opt/scripts/BTrace
 pip install -r requirements.txt
 alembic upgrade head
 
-cp btracer.service /etc//systemd//system/btracer.service
+cp btracer.service /etc/systemd/system/btracer.service
 systemctl daemon-reload
 systemctl enable btracer.service
 systemctl start btracer.service

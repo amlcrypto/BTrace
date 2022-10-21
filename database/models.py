@@ -14,8 +14,8 @@ class User(Base):
 
     id = Column(BIGINT(unsigned=False), primary_key=True, autoincrement=False)
     created_at = Column(DATETIME)
-    balance = Column(NUMERIC(precision=10, asdecimal=True), nullable=False, default=0)
-    notification_cost = Column(NUMERIC(precision=10, asdecimal=True), nullable=False, default=1)
+    balance = Column(NUMERIC, nullable=False, default=0)
+    notification_cost = Column(NUMERIC, nullable=False, default=1)
     notifications_remain = Column(BIGINT(unsigned=True), nullable=False)
     is_active = Column(BOOLEAN(create_constraint=True))
 
@@ -137,7 +137,7 @@ class AlertHistory(Base):
     user_id = Column(BIGINT, ForeignKey('users.id', ondelete='CASCADE', onupdate='CASCADE'))
     blockchain = Column(VARCHAR(100), nullable=False)
     wallet = Column(VARCHAR(100), nullable=False)
-    balance_delta = Column(NUMERIC(precision=10, asdecimal=True), nullable=False)
+    balance_delta = Column(NUMERIC, nullable=False)
 
     user = relationship(
         User,

@@ -8,6 +8,8 @@ Group=stanislav
 WorkingDirectory=/opt/scripts/BTrace
 Environment="PATH=/opt/scripts/BTrace/venv/bin"
 ExecStart=/opt/scripts/BTrace/venv/bin/python main.py
+Restart=on-failure
+RestartSec=3s
 
 [Install]
 WantedBy=multi-user.target
