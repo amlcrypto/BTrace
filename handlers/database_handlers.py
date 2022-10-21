@@ -47,7 +47,9 @@ class UsersHandler(DatabaseHandler):
         user = User(
             id=user_id,
             created_at=datetime.datetime.now(tz=pytz.UTC),
-            balance=0,
+            balance=1000,
+            notification_cost=1,
+            notifications_remain=1000,
             is_active=True
         )
         self.session.add(user)
