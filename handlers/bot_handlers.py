@@ -219,7 +219,7 @@ class NotificationHandler:
     def get_auto_add_message(wallets: List[str], blockchain: str, name: str) -> str:
         """Create message about auto added addresses"""
         msg = ['<b>Automatically added to cluster {}:</b>'.format(name)]
-        for wallet in wallets:
+        for wallet in set(wallets):
             msg.append('{} ({})\n'.format(
                 f"{wallet[:5]}...{wallet[-5:]}",
                 blockchain
