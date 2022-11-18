@@ -15,6 +15,7 @@ from schema.bot_schema import CallbackDataModel
 async def handle_view_cluster_addresses(callback: types.CallbackQuery):
     """Handle cluster addresses list"""
     data = CallbackDataModel.parse_raw(callback.data)
+    page = data.data.get('page')
     handler = ClusterHandler()
     cluster = handler.get_cluster_by_id(data.id)
     if not cluster:
@@ -22,7 +23,7 @@ async def handle_view_cluster_addresses(callback: types.CallbackQuery):
         callback.message.from_user = callback.from_user
         await handle_groups(callback.message)
     else:
-        msg, markup = KeyboardConstructor.get_addresses_list(cluster)
+        msg, markup = KeyboardConstructor.get_addresses_list(cluster, page)
         await callback.answer('')
         await callback.message.answer(msg, reply_markup=markup)
 

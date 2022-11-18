@@ -2,6 +2,7 @@
 import csv
 import datetime
 import json
+import math
 from typing import Tuple, List
 
 from aiogram import types, Bot
@@ -38,13 +39,14 @@ class KeyboardConstructor:
         return filename
 
     @staticmethod
-    def get_inline_button(text: str, action: str, data: int) -> types.InlineKeyboardButton:
+    def get_inline_button(text: str, action: str, data: int, **kwargs) -> types.InlineKeyboardButton:
         """InlineButton factory"""
         return types.InlineKeyboardButton(
             text=text,
             callback_data=CallbackDataModel(
                 action=action,
-                id=data
+                id=data,
+                data=kwargs
             ).json()
         )
 
@@ -71,24 +73,40 @@ class KeyboardConstructor:
         return buttons
 
     @classmethod
-    def get_addresses_list(cls, cluster: Cluster) -> Tuple[str, types.InlineKeyboardMarkup]:
+    def get_addresses_list(
+            cls, cluster: Cluster, page: int = None
+       ) -> Tuple[str, types.InlineKeyboardMarkup]:
         """
         Get cluster and returns message with list of cluster addresses and inline keyboard
         :param cluster: Cluster
+        :param page: int or None
         :return: Tuple[str, InlineKeyboardMarkup]
         """
-        msg = ['<b>Addresses:</b>']
-        for link in cluster.addresses:
-            if link.address.add_success:
-                row = f"{link.address.wallet[:5]}...{link.address.wallet[-5:]} /address_{link.id}"
-                msg.append(row)
+        per_page = 20
+        if not page:
+            page = 1
+        end = page * per_page
+        start = end - per_page
+        addresses = [x for x in cluster.addresses if x.address.add_success]
+        pages = math.ceil(len(addresses) / per_page)
+        msg = [f'<b>Addresses: (page {page} of {pages})</b>']
+        for link in addresses[start:end]:
+            row = f"{link.address.wallet[:5]}...{link.address.wallet[-5:]} /address_{link.id}"
+            msg.append(row)
 
         markup = types.InlineKeyboardMarkup(inline_keyboard=[])
         buttons = []
         for text, action in (('Add address', 'add_address'), ('Back', 'back_to_cluster')):
             buttons.append(cls.get_inline_button(text, action, cluster.id))
+        pagination = []
+        if page > 1:
+            pagination.append(cls.get_inline_button('Previous', 'view_addresses', cluster.id, page=page - 1))
+        if page < pages:
+            pagination.append(cls.get_inline_button('Next', 'view_addresses', cluster.id, page=page + 1))
 
         markup.inline_keyboard.append(buttons)
+        if pagination:
+            markup.inline_keyboard.append(pagination)
         return '\n'.join(msg), markup
 
     @classmethod
