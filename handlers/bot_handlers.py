@@ -188,6 +188,7 @@ class NotificationHandler:
     @classmethod
     def format_transaction_message(
             cls,
+            tx_hash: str,
             wallet: str,
             transaction: Transaction,
             blockchain: Blockchain,
@@ -197,7 +198,11 @@ class NotificationHandler:
         """Returns message for transaction"""
         src_name = ' ' + name if wallet == transaction.src else ''
         dst_name = ' ' + name if wallet == transaction.dst else ''
-        msg = 'Cluster: {}\nBlockchain: {}\nSender: {}\nReceiver: {}\nVALUE: {:.2f} {}\nTIME (UTC): {}'.format(
+        tx_link = blockchain.tx_link_template
+        if tx_hash:
+            tx_link += tx_hash
+        msg = 'Transaction: {}\nCluster: {}\nBlockchain: {}\nSender: {}\nReceiver: {}\nVALUE: {:.2f} {}\nTIME (UTC): {}'.format(
+            cls.get_link(tx_link, 'Watch on ' + blockchain.explorer_title),
             cluster.name,
             f"{blockchain.title} ({blockchain.tag})",
             cls.get_link(
@@ -244,22 +249,26 @@ class NotificationHandler:
 
                 user = users_handler.get_user_by_id(link.cluster.user_id)
 
-                for transaction in data.transactions:
-                    msg = cls.format_transaction_message(
-                        wallet=data.wallet,
-                        transaction=transaction,
-                        blockchain=address.blockchain,
-                        cluster=link.cluster,
-                        name=link.address_name
-                    )
-                    if user.is_active and user.notifications_remain:
+                send_allowed = all([link.watch, user.is_active, user.notifications_remain,
+                                    link.cluster.watch])
+                if send_allowed:
+                    for transaction in data.transactions:
+                        msg = cls.format_transaction_message(
+                            tx_hash=transaction.tx_hash,
+                            wallet=data.wallet,
+                            transaction=transaction,
+                            blockchain=address.blockchain,
+                            cluster=link.cluster,
+                            name=link.address_name
+                        )
+
                         for chat in link_chats:
                             await bot.send_message(chat, msg, parse_mode='HTML', disable_web_page_preview=True)
                         user = users_handler.reduce_balance(user, address.blockchain.title, data.wallet)
 
-                if add_notify:
-                    for chat in link_chats:
-                        await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
+                    if add_notify:
+                        for chat in link_chats:
+                            await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
 
                 for wallet in data.auto_add:
                     addresses_handler.add_address(link.cluster_id, wallet, data.blockchain, auto=True)
@@ -277,26 +286,29 @@ class NotificationHandler:
                     name, chats = addresses_handler.add_success(address, data.cluster_id, True)
                 except Exception as e:
                     LOGGER.error(str(e))
+                    return
             else:
                 result = 'Something goes wrong, please contact to administration'
                 try:
                     cluster = ClusterHandler().get_cluster_by_id(data.cluster_id)
                 except Exception as e:
                     LOGGER.error(str(e))
+                    return
                 chats = json.loads(cluster.chats)
                 name = cluster.name
             try:
                 blockchain = addresses_handler.get_blockchain_by_id(data.blockchain)
             except Exception as e:
                 LOGGER.error(str(e))
-            for chat in chats:
-                try:
-                    await bot.send_message(
-                        chat_id=chat,
-                        text=f'{name}:\n{data.wallet[:5]}...{data.wallet[-5:]} ({blockchain.tag})\n{result}'
-                    )
-                except Exception as e:
-                    LOGGER.error(str(e))
+            else:
+                for chat in chats:
+                    try:
+                        await bot.send_message(
+                            chat_id=chat,
+                            text=f'{name}:\n{data.wallet[:5]}...{data.wallet[-5:]} ({blockchain.tag})\n{result}'
+                        )
+                    except Exception as e:
+                        LOGGER.error(str(e))
 
     @classmethod
     async def handle_notification(cls, data: Incoming, bot: Bot):

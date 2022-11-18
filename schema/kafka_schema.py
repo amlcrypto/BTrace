@@ -14,6 +14,7 @@ class Outgoing(BaseModel):
 
 class Transaction(BaseModel):
     """Single transaction for alert"""
+    tx_hash: Optional[str]
     src: str
     dst: str
     value: float
