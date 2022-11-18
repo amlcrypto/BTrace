@@ -6,12 +6,16 @@ from aiokafka import AIOKafkaConsumer, TopicPartition, AIOKafkaProducer
 from config import settings
 from handlers.bot_handlers import NotificationHandler
 from handlers.database_handlers import AddressesHandler
+from logger import LOGGER
 from schema.kafka_schema import Outgoing, Incoming
 
 
 async def send_data(action: str, wallet: str, blockchain_id: int, cluster_id: int = 0):
     """Send data to handler"""
-    blockchain = AddressesHandler().get_blockchain_by_id(blockchain_id)
+    try:
+        blockchain = AddressesHandler().get_blockchain_by_id(blockchain_id)
+    except Exception as e:
+        LOGGER.error(str(e))
     topic = f"{blockchain.tag}_TO_CHECKER"
     msg = Outgoing(
         action=action,
@@ -31,7 +35,10 @@ async def send_data(action: str, wallet: str, blockchain_id: int, cluster_id: in
 
 async def consume_data(bot: Bot):
     """Consume data from kafka"""
-    handler = AddressesHandler()
+    try:
+        handler = AddressesHandler()
+    except Exception as e:
+        LOGGER.error(str(e))
     topics = [x.tag for x in handler.get_blockchains()]
     consumer = AIOKafkaConsumer(
         *topics,
@@ -51,3 +58,4 @@ async def consume_data(bot: Bot):
             await consumer.commit({tp: message.offset + 1})
     finally:
         await consumer.stop()
+    del handler

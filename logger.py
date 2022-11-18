@@ -14,7 +14,7 @@ LOGGER = logging.getLogger('main')
 if 'log' not in os.listdir(PATH):
     os.mkdir(f'{PATH}/log')
 
-FORMATTER = logging.Formatter()
+FORMATTER = logging.Formatter("%(asctime)s %(levelname)s: %(message)s")
 HANDLER = TimedRotatingFileHandler(
     filename=f'{PATH}/log/log.log',
     when='midnight',

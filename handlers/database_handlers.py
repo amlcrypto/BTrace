@@ -10,6 +10,7 @@ from sqlalchemy.orm import joinedload
 from database.factory import DatabaseFactory
 from database.models import User, Cluster, Address, Blockchain, ClusterAddress, AlertHistory
 from exceptions import NotExist, InvalidName
+from logger import LOGGER
 
 
 class DatabaseHandler:
@@ -17,7 +18,10 @@ class DatabaseHandler:
     __db_name = None
 
     def __init__(self, name: str):
-        self.session = DatabaseFactory.get_sync_session(name)
+        try:
+            self.session = DatabaseFactory.get_sync_session(name)
+        except Exception as e:
+            LOGGER.error(str(e))
 
     def __del__(self):
         self.session.close()

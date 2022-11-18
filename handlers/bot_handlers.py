@@ -10,6 +10,7 @@ from config import PATH
 from database.models import User, Cluster, Blockchain, ClusterAddress, Address
 from exceptions import NotExist
 from handlers.database_handlers import AddressesHandler, ClusterHandler, UsersHandler
+from logger import LOGGER
 from schema.bot_schema import CallbackDataModel
 from schema.kafka_schema import Incoming, Transaction
 
@@ -229,38 +230,41 @@ class NotificationHandler:
     @classmethod
     async def alert(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
         """Handle alert incoming message"""
-        users_handler = UsersHandler()
+        try:
+            users_handler = UsersHandler()
 
-        links = addresses_handler.get_links_by_address_id(address.id)
+            links = addresses_handler.get_links_by_address_id(address.id)
 
-        for link in links:
-            link_chats = json.loads(link.cluster.chats)
-            if data.auto_add:
-                add_notify = cls.get_auto_add_message(data.auto_add, address.blockchain.tag, link.cluster.name)
-            else:
-                add_notify = None
+            for link in links:
+                link_chats = json.loads(link.cluster.chats)
+                if data.auto_add:
+                    add_notify = cls.get_auto_add_message(data.auto_add, address.blockchain.tag, link.cluster.name)
+                else:
+                    add_notify = None
 
-            user = users_handler.get_user_by_id(link.cluster.user_id)
+                user = users_handler.get_user_by_id(link.cluster.user_id)
 
-            for transaction in data.transactions:
-                msg = cls.format_transaction_message(
-                    wallet=data.wallet,
-                    transaction=transaction,
-                    blockchain=address.blockchain,
-                    cluster=link.cluster,
-                    name=link.address_name
-                )
-                if user.is_active and user.notifications_remain:
+                for transaction in data.transactions:
+                    msg = cls.format_transaction_message(
+                        wallet=data.wallet,
+                        transaction=transaction,
+                        blockchain=address.blockchain,
+                        cluster=link.cluster,
+                        name=link.address_name
+                    )
+                    if user.is_active and user.notifications_remain:
+                        for chat in link_chats:
+                            await bot.send_message(chat, msg, parse_mode='HTML', disable_web_page_preview=True)
+                        user = users_handler.reduce_balance(user, address.blockchain.title, data.wallet)
+
+                if add_notify:
                     for chat in link_chats:
-                        await bot.send_message(chat, msg, parse_mode='HTML', disable_web_page_preview=True)
-                    user = users_handler.reduce_balance(user, address.blockchain.title, data.wallet)
+                        await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
 
-            if add_notify:
-                for chat in link_chats:
-                    await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
-
-            for wallet in data.auto_add:
-                addresses_handler.add_address(link.cluster_id, wallet, data.blockchain, auto=True)
+                for wallet in data.auto_add:
+                    addresses_handler.add_address(link.cluster_id, wallet, data.blockchain, auto=True)
+        except Exception as e:
+            LOGGER.error(str(e))
 
     @classmethod
     async def report(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
@@ -269,18 +273,30 @@ class NotificationHandler:
         if data.action == 'add_address':
             if data.state == 1:
                 result = 'added to tracing'
-                name, chats = addresses_handler.add_success(address, data.cluster_id, True)
+                try:
+                    name, chats = addresses_handler.add_success(address, data.cluster_id, True)
+                except Exception as e:
+                    LOGGER.error(str(e))
             else:
                 result = 'Something goes wrong, please contact to administration'
-                cluster = ClusterHandler().get_cluster_by_id(data.cluster_id)
+                try:
+                    cluster = ClusterHandler().get_cluster_by_id(data.cluster_id)
+                except Exception as e:
+                    LOGGER.error(str(e))
                 chats = json.loads(cluster.chats)
                 name = cluster.name
-            blockchain = addresses_handler.get_blockchain_by_id(data.blockchain)
+            try:
+                blockchain = addresses_handler.get_blockchain_by_id(data.blockchain)
+            except Exception as e:
+                LOGGER.error(str(e))
             for chat in chats:
-                await bot.send_message(
-                    chat_id=chat,
-                    text=f'{name}:\n{data.wallet[:5]}...{data.wallet[-5:]} ({blockchain.tag})\n{result}'
-                )
+                try:
+                    await bot.send_message(
+                        chat_id=chat,
+                        text=f'{name}:\n{data.wallet[:5]}...{data.wallet[-5:]} ({blockchain.tag})\n{result}'
+                    )
+                except Exception as e:
+                    LOGGER.error(str(e))
 
     @classmethod
     async def handle_notification(cls, data: Incoming, bot: Bot):
@@ -294,8 +310,13 @@ class NotificationHandler:
             )
         except NotExist:
             return data
-        if data.action == 'alert':
-            handler = cls.alert
+        except Exception as e:
+            LOGGER.error(str(e))
         else:
-            handler = cls.report
-        await handler(address, data, bot, addresses_handler)
+            if data.action == 'alert':
+                handler = cls.alert
+            else:
+                handler = cls.report
+            await handler(address, data, bot, addresses_handler)
+        finally:
+            del addresses_handler

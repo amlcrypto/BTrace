@@ -9,6 +9,7 @@ from handlers.bot_handlers import KeyboardConstructor
 from handlers.database_handlers import AddressesHandler
 from handlers.kafka_handlers import send_data
 from handlers.states import AddAddressState, RenameAddressState
+from logger import LOGGER
 from schema.bot_schema import CallbackDataModel
 
 
@@ -20,7 +21,10 @@ async def get_address(message: types.Message, state: FSMContext):
         await state.update_data(wallet=message.text)
         await state.set_state(AddAddressState.blockchain)
         msg = 'Choose blockchain'
-        chains = AddressesHandler().get_blockchains()
+        try:
+            chains = AddressesHandler().get_blockchains()
+        except Exception as  e:
+            LOGGER.error(str(e))
         markup = KeyboardConstructor.get_blockchains_choices(chains)
         await message.answer(msg, reply_markup=markup)
 
