@@ -23,10 +23,11 @@ async def get_address(message: types.Message, state: FSMContext):
         msg = 'Choose blockchain'
         try:
             chains = AddressesHandler().get_blockchains()
-        except Exception as  e:
+        except Exception as e:
             LOGGER.error(str(e))
-        markup = KeyboardConstructor.get_blockchains_choices(chains)
-        await message.answer(msg, reply_markup=markup)
+        else:
+            markup = KeyboardConstructor.get_blockchains_choices(chains)
+            await message.answer(msg, reply_markup=markup)
 
 
 async def get_blockchain(callback: types.CallbackQuery, state: FSMContext):
