@@ -265,9 +265,8 @@ class NotificationHandler:
     async def alert(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
         """Handle alert incoming message"""
         session = DatabaseFactory.get_sync_session('tracer')
+        users_handler = UsersHandler()
         try:
-            users_handler = UsersHandler()
-
             links = addresses_handler.get_links_by_address_id(address.id)
 
             for link in links:
@@ -316,6 +315,7 @@ class NotificationHandler:
             LOGGER.error(str(e))
         finally:
             session.close_all()
+            users_handler.session.dispose()
 
     @classmethod
     async def report(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
@@ -353,11 +353,10 @@ class NotificationHandler:
                         LOGGER.error(str(e))
 
     @classmethod
-    async def handle_notification(cls, data: Incoming, bot: Bot):
+    async def handle_notification(cls, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
         """Handle notification"""
+        # addresses_handler = AddressesHandler()
         try:
-            addresses_handler = AddressesHandler()
-
             address = addresses_handler.get_address_by_wallet_and_blockchain(
                 wallet=data.wallet,
                 blockchain=data.blockchain
@@ -372,5 +371,5 @@ class NotificationHandler:
             else:
                 handler = cls.report
             await handler(address, data, bot, addresses_handler)
-        finally:
-            del addresses_handler
+        # finally:
+            # addresses_handler.session.dispose()
