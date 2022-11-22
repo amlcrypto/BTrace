@@ -45,7 +45,7 @@ class UsersHandler(DatabaseHandler):
         with Session(self.session) as sess:
             return sess.query(User).filter(
                 User.id == user_id
-            ).one_or_none()
+            ).options(joinedload(User.clusters)).one_or_none()
 
     def add_user(self, user_id: int) -> User:
         """Save new user"""

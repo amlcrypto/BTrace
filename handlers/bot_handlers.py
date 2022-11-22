@@ -6,8 +6,10 @@ import math
 from typing import Tuple, List
 
 from aiogram import types, Bot
+from sqlalchemy.orm import Session
 
 from config import PATH
+from database.factory import DatabaseFactory
 from database.models import User, Cluster, Blockchain, ClusterAddress, Address
 from exceptions import NotExist
 from handlers.database_handlers import AddressesHandler, ClusterHandler, UsersHandler
@@ -18,6 +20,7 @@ from schema.kafka_schema import Incoming, Transaction
 
 class KeyboardConstructor:
     """Handler to create messages with keyboards or single keyboards"""
+    _engine = DatabaseFactory.get_sync_engine('tracer')
     @classmethod
     def create_alert_history_report(cls, user_id: int) -> str:
         """Creates report for user alert history"""
@@ -87,12 +90,14 @@ class KeyboardConstructor:
             page = 1
         end = page * per_page
         start = end - per_page
-        addresses = [x for x in cluster.addresses if x.address.add_success]
-        pages = math.ceil(len(addresses) / per_page)
-        msg = [f'<b>Addresses: (page {page} of {pages})</b>']
-        for link in addresses[start:end]:
-            row = f"{link.address.wallet[:5]}...{link.address.wallet[-5:]} /address_{link.id}"
-            msg.append(row)
+        with Session(bind=cls._engine) as session:
+            session.add(cluster)
+            addresses = [x for x in cluster.addresses if x.address.add_success]
+            pages = math.ceil(len(addresses) / per_page)
+            msg = [f'<b>Addresses: (page {page} of {pages})</b>']
+            for link in addresses[start:end]:
+                row = f"{link.address.wallet[:5]}...{link.address.wallet[-5:]} /address_{link.id}"
+                msg.append(row)
 
         markup = types.InlineKeyboardMarkup(inline_keyboard=[])
         buttons = []
@@ -117,64 +122,69 @@ class KeyboardConstructor:
         :return: str
         """
         msg = []
-        for cluster in user.clusters:
-            ids = [x.address_id for x in cluster.addresses]
-            len_addresses = AddressesHandler().get_added_count(ids)
-            row = '{} ({}) /cluster_{}'.format(
-                    cluster.name,
-                    len_addresses,
-                    cluster.id
-                )
-            msg.append(row)
+        with Session(bind=cls._engine) as session:
+            session.add(user)
+            for cluster in user.clusters:
+                ids = [x.address_id for x in cluster.addresses]
+                len_addresses = AddressesHandler().get_added_count(ids)
+                row = '{} ({}) /cluster_{}'.format(
+                        cluster.name,
+                        len_addresses,
+                        cluster.id
+                    )
+                msg.append(row)
         return '\n'.join(msg)
 
     @classmethod
     def get_address_detail(cls, address: ClusterAddress) -> Tuple[str, types.InlineKeyboardMarkup]:
         """Get address link and returns message and keyboard"""
         blockchain = AddressesHandler().get_blockchain_by_id(address.address.blockchain_id)
-
-        msg = '<b>Address</b>:\n<code>{}</code>\n<a href="{}{}">' \
-              'Watch on {}</a>\n<b>Name:</b> {}\n<b>Blockchain: </b>{}\n<b>Watching: </b>{}'.format(
-                  address.address.wallet,
-                  blockchain.explorer_link_template,
-                  address.address.wallet,
-                  blockchain.explorer_title,
-                  address.address_name,
-                  f"{blockchain.title} ({blockchain.tag})",
-                  address.watch
-              )
-        buttons_data = [
-            ('Rename', 'rename_address', address.id),
-            ('Mute' if address.watch else 'Unmute', 'toggle_mute_address', address.id),
-            ('Delete', 'delete_address', address.id),
-            ('Back', 'view_addresses', address.cluster_id)
-        ]
-        markup = types.InlineKeyboardMarkup(inline_keyboard=[
-            [cls.get_inline_button(*x) for x in buttons_data[:2]],
-            [cls.get_inline_button(*x) for x in buttons_data[2:]]
-        ])
+        with Session(bind=cls._engine) as session:
+            session.add(address)
+            msg = '<b>Address</b>:\n<code>{}</code>\n<a href="{}{}">' \
+                'Watch on {}</a>\n<b>Name:</b> {}\n<b>Blockchain: </b>{}\n<b>Watching: </b>{}'.format(
+                    address.address.wallet,
+                    blockchain.explorer_link_template,
+                    address.address.wallet,
+                    blockchain.explorer_title,
+                    address.address_name,
+                    f"{blockchain.title} ({blockchain.tag})",
+                    address.watch
+                )
+            buttons_data = [
+                ('Rename', 'rename_address', address.id),
+                ('Mute' if address.watch else 'Unmute', 'toggle_mute_address', address.id),
+                ('Delete', 'delete_address', address.id),
+                ('Back', 'view_addresses', address.cluster_id)
+            ]
+            markup = types.InlineKeyboardMarkup(inline_keyboard=[
+                [cls.get_inline_button(*x) for x in buttons_data[:2]],
+                [cls.get_inline_button(*x) for x in buttons_data[2:]]
+            ])
         return msg, markup
 
     @classmethod
     def get_cluster_detail(cls, cluster: Cluster) -> Tuple[str, types.InlineKeyboardMarkup]:
         """Returns cluster detail message and inline keyboard"""
-        ids = [x.address_id for x in cluster.addresses]
-        msg = '<b>Name:</b>\n{}\n<b>Addresses count:</b> {}\n<b>Watching: </b>{}'.format(
-            cluster.name,
-            AddressesHandler().get_added_count(ids),
-            cluster.watch
-        )
-        buttons_data = [
-            ('View addresses', 'view_addresses'),
-            ('Add address', 'add_address'),
-            ('Mute' if cluster.watch else 'Unmute', 'toggle_mute_cluster'),
-            ('Rename', 'rename_cluster'),
-            ('Delete', 'delete_cluster'),
-        ]
-        markup = types.InlineKeyboardMarkup(inline_keyboard=[
-            [cls.get_inline_button(x, y, cluster.id) for x, y in buttons_data[:3]],
-            [cls.get_inline_button(x, y, cluster.id) for x, y in buttons_data[3:]]
-        ])
+        with Session(bind=cls._engine) as session:
+            session.add(cluster)
+            ids = [x.address_id for x in cluster.addresses]
+            msg = '<b>Name:</b>\n{}\n<b>Addresses count:</b> {}\n<b>Watching: </b>{}'.format(
+                cluster.name,
+                AddressesHandler().get_added_count(ids),
+                cluster.watch
+            )
+            buttons_data = [
+                ('View addresses', 'view_addresses'),
+                ('Add address', 'add_address'),
+                ('Mute' if cluster.watch else 'Unmute', 'toggle_mute_cluster'),
+                ('Rename', 'rename_cluster'),
+                ('Delete', 'delete_cluster'),
+            ]
+            markup = types.InlineKeyboardMarkup(inline_keyboard=[
+                [cls.get_inline_button(x, y, cluster.id) for x, y in buttons_data[:3]],
+                [cls.get_inline_button(x, y, cluster.id) for x, y in buttons_data[3:]]
+            ])
         return msg, markup
 
     @classmethod

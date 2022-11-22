@@ -56,6 +56,8 @@ async def consume_data(bot: Bot):
                 await send_data('delete_address', result.wallet, result.blockchain)
             tp = TopicPartition(message.topic, message.partition)
             await consumer.commit({tp: message.offset + 1})
+    except Exception as e:
+        LOGGER.error(str(e))
     finally:
         await consumer.stop()
     del handler
