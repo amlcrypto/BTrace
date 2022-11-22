@@ -40,20 +40,25 @@ async def handle_help(message: types.Message):
 async def handle_profile(message: types.Message):
     """Handle users profile"""
     handler = UsersHandler()
-    user = handler.get_user_by_id(message.from_user.id)
-    button = types.InlineKeyboardButton(
-        text='Get my alert history',
-        callback_data=CallbackDataModel(
-            action='alert_history',
-            id=user.id
-        ).json()
-    )
-    markup = types.InlineKeyboardMarkup(inline_keyboard=[[button]])
-    if not user:
-        msg = 'You are not registered yet. type "/start" to register'
-        await message.answer(msg)
-    else:
-        await message.answer(str(user), reply_markup=markup)
+    try:
+        user = handler.get_user_by_id(message.from_user.id)
+        button = types.InlineKeyboardButton(
+            text='Get my alert history',
+            callback_data=CallbackDataModel(
+                action='alert_history',
+                id=user.id
+            ).json()
+        )
+        markup = types.InlineKeyboardMarkup(inline_keyboard=[[button]])
+        if not user:
+            msg = 'You are not registered yet. type "/start" to register'
+            await message.answer(msg)
+        else:
+            await message.answer(str(user), reply_markup=markup)
+    except Exception as e:
+        LOGGER.error(str(e))
+    finally:
+        handler.session.dispose()
 
 
 async def handle_group_add(message: types.Message, state: FSMContext):
@@ -68,10 +73,15 @@ async def handle_group_add(message: types.Message, state: FSMContext):
 async def handle_groups(message: types.Message):
     """Handle 'My clusters' command"""
     handler = UsersHandler()
-    user = handler.get_user_by_id(message.from_user.id)
-    if not user:
-        msg = 'You are not registered yet. type "/start" to register'
-        await message.answer(msg)
-    else:
-        msg = KeyboardConstructor.get_clusters_list(user)
-        await message.answer(msg or "You don't added any clusters yet")
+    try:
+        user = handler.get_user_by_id(message.from_user.id)
+        if not user:
+            msg = 'You are not registered yet. type "/start" to register'
+            await message.answer(msg)
+        else:
+            msg = KeyboardConstructor.get_clusters_list(user)
+            await message.answer(msg or "You don't added any clusters yet")
+    except Exception as e:
+        LOGGER.error(str(e))
+    finally:
+        handler.session.dispose()

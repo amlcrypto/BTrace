@@ -67,13 +67,16 @@ async def get_name(message: types.Message, state: FSMContext):
             buttons = KeyboardConstructor.get_base_reply_keyboard()
             await state.reset_state(with_data=True)
             await message.answer(msg, reply_markup=buttons)
+        finally:
+            handler.session.dispose()
 
 
 async def handle_address_detail(message: types.Message):
     """Handle detail info about address"""
     address_id = int(message.text.rsplit('_', 1)[1])
+    handler = AddressesHandler()
     try:
-        address = AddressesHandler().get_address_by_id(address_id)
+        address = handler.get_address_by_id(address_id)
     except NotExist as e:
         msg = str(e)
         markup = KeyboardConstructor.get_base_reply_keyboard()
@@ -81,6 +84,8 @@ async def handle_address_detail(message: types.Message):
     else:
         msg, markup = KeyboardConstructor.get_address_detail(address)
         await message.answer(msg, reply_markup=markup, disable_web_page_preview=True)
+    finally:
+        handler.session.dispose()
 
 
 async def handle_rename_address(callback: types.CallbackQuery, state: FSMContext):
@@ -99,8 +104,9 @@ async def handle_rename_address_set_name(message: types.Message, state: FSMConte
         await handle_cancel(message, state)
     else:
         data = await state.get_data()
+        handler = AddressesHandler()
         try:
-            AddressesHandler().rename_address(data['link_id'], message.text)
+            handler.rename_address(data['link_id'], message.text)
         except (NotExist, InvalidName) as e:
             await message.answer(str(e))
         else:
@@ -110,13 +116,16 @@ async def handle_rename_address_set_name(message: types.Message, state: FSMConte
             msg = 'Success'
             await message.answer(msg, reply_markup=markup)
             await handle_address_detail(message)
+        finally:
+            handler.session.dispose()
 
 
 async def handle_mute_address(callback: types.CallbackQuery):
     """Toggle mute/unmute address"""
     data = CallbackDataModel.parse_raw(callback.data)
+    handler = AddressesHandler()
     try:
-        address = AddressesHandler().toggle_mute_address(data.id)
+        address = handler.toggle_mute_address(data.id)
     except NotExist as e:
         msg = str(e)
         markup = KeyboardConstructor.get_base_reply_keyboard()
@@ -128,17 +137,25 @@ async def handle_mute_address(callback: types.CallbackQuery):
         await callback.message.edit_text(msg)
         await callback.message.edit_reply_markup(markup)
         await callback.answer('Success')
+    finally:
+        handler.session.dispose()
 
 
 async def handle_delete_address(callback: types.CallbackQuery):
     """Delete address from cluster"""
     data = CallbackDataModel.parse_raw(callback.data)
-    cluster_id, deleted = AddressesHandler().delete_address(data.id)
-    if deleted:
-        address, blockchain = deleted
-        await send_data(action='delete_address', wallet=address, blockchain_id=blockchain, cluster_id=cluster_id)
-    data.action = 'view_addresses'
-    data.id = cluster_id
-    callback.data = data.json()
-    await callback.answer('Success')
-    await handle_view_cluster_addresses(callback)
+    handler = AddressesHandler()
+    try:
+        cluster_id, deleted = handler.delete_address(data.id)
+        if deleted:
+            address, blockchain = deleted
+            await send_data(action='delete_address', wallet=address, blockchain_id=blockchain, cluster_id=cluster_id)
+        data.action = 'view_addresses'
+        data.id = cluster_id
+        callback.data = data.json()
+        await callback.answer('Success')
+        await handle_view_cluster_addresses(callback)
+    except Exception as e:
+        LOGGER.error(str(e))
+    finally:
+        handler.session.dispose()

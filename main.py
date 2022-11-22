@@ -50,11 +50,13 @@ disp.register_callback_query_handler(handle_delete_address, CallbackDataActionFi
 
 
 async def main():
-
-    await asyncio.gather(
-        disp.start_polling(disp),
-        consume_data(bot)
-    )
+    try:
+        await asyncio.gather(
+            disp.start_polling(disp),
+            consume_data(bot)
+        )
+    finally:
+        disp.stop_polling()
 
 
 if __name__ == '__main__':

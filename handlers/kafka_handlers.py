@@ -12,33 +12,34 @@ from schema.kafka_schema import Outgoing, Incoming
 
 async def send_data(action: str, wallet: str, blockchain_id: int, cluster_id: int = 0):
     """Send data to handler"""
+    handler = AddressesHandler()
     try:
-        blockchain = AddressesHandler().get_blockchain_by_id(blockchain_id)
+        blockchain = handler.get_blockchain_by_id(blockchain_id)
     except Exception as e:
         LOGGER.error(str(e))
-    topic = f"{blockchain.tag}_TO_CHECKER"
-    msg = Outgoing(
-        action=action,
-        wallet=wallet,
-        blockchain=blockchain_id,
-        cluster_id=cluster_id
-    )
-    producer = AIOKafkaProducer(
-        bootstrap_servers=[settings.kafka]
-    )
-    await producer.start()
-    try:
-        await producer.send(topic, msg.json().encode('utf-8'))
+    else:
+        topic = f"{blockchain.tag}_TO_CHECKER"
+        msg = Outgoing(
+            action=action,
+            wallet=wallet,
+            blockchain=blockchain_id,
+            cluster_id=cluster_id
+        )
+        producer = AIOKafkaProducer(
+            bootstrap_servers=[settings.kafka]
+        )
+        await producer.start()
+        try:
+            await producer.send(topic, msg.json().encode('utf-8'))
+        finally:
+            await producer.stop()
     finally:
-        await producer.stop()
+        handler.session.dispose()
 
 
 async def consume_data(bot: Bot):
     """Consume data from kafka"""
-    try:
-        handler = AddressesHandler()
-    except Exception as e:
-        LOGGER.error(str(e))
+    handler = AddressesHandler()
     topics = [x.tag for x in handler.get_blockchains()]
     consumer = AIOKafkaConsumer(
         *topics,
@@ -59,5 +60,6 @@ async def consume_data(bot: Bot):
     except Exception as e:
         LOGGER.error(str(e))
     finally:
+        handler.session.dispose()
         await consumer.stop()
     del handler

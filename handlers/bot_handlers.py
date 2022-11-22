@@ -21,6 +21,7 @@ from schema.kafka_schema import Incoming, Transaction
 class KeyboardConstructor:
     """Handler to create messages with keyboards or single keyboards"""
     _engine = DatabaseFactory.get_sync_engine('tracer')
+
     @classmethod
     def create_alert_history_report(cls, user_id: int) -> str:
         """Creates report for user alert history"""
@@ -227,7 +228,7 @@ class NotificationHandler:
         src_name = ' ' + name if wallet == transaction.src else ''
         dst_name = ' ' + name if wallet == transaction.dst else ''
         tx_link = blockchain.tx_link_template
-        if tx_hash:
+        if tx_hash and tx_link:
             tx_link += tx_hash
         msg = 'Transaction: {}\nCluster: {}\nBlockchain: {}\nSender: {}\nReceiver: {}\nVALUE: {:.2f} {}\nTIME (UTC): {}'.format(
             cls.get_link(tx_link, 'Watch on ' + blockchain.explorer_title),
@@ -263,6 +264,7 @@ class NotificationHandler:
     @classmethod
     async def alert(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
         """Handle alert incoming message"""
+        session = DatabaseFactory.get_sync_session('tracer')
         try:
             users_handler = UsersHandler()
 
@@ -270,16 +272,17 @@ class NotificationHandler:
 
             for link in links:
                 link_chats = json.loads(link.cluster.chats)
-                if data.auto_add:
-                    add_notify = cls.get_auto_add_message(data.auto_add, address.blockchain.tag, link.cluster.name)
-                else:
-                    add_notify = None
-
+                # if data.auto_add:
+                #     add_notify = cls.get_auto_add_message(data.auto_add, address.blockchain.tag, link.cluster.name)
+                # else:
+                #     add_notify = None
                 user = users_handler.get_user_by_id(link.cluster.user_id)
 
                 send_allowed = all([link.watch, user.is_active, user.notifications_remain,
                                     link.cluster.watch])
                 if send_allowed:
+                    session.add(link.cluster)
+                    addresses = set(x.address for x in link.cluster.addresses)
                     for transaction in data.transactions:
                         msg = cls.format_transaction_message(
                             tx_hash=transaction.tx_hash,
@@ -289,19 +292,30 @@ class NotificationHandler:
                             cluster=link.cluster,
                             name=link.address_name
                         )
-
+                        markup = types.InlineKeyboardMarkup(inline_keyboard=[])
+                        if transaction.dst not in addresses:
+                            button = KeyboardConstructor.get_inline_button(
+                                text='Add address to trace',
+                                action='add_address',
+                                data=link.cluster_id,
+                                blk=address.blockchain_id
+                            )
+                            markup.inline_keyboard.append([button])
                         for chat in link_chats:
-                            await bot.send_message(chat, msg, parse_mode='HTML', disable_web_page_preview=True)
+                            await bot.send_message(chat, msg, reply_markup=markup, parse_mode='HTML',
+                                                   disable_web_page_preview=True)
                         user = users_handler.reduce_balance(user, address.blockchain.title, data.wallet)
 
-                    if add_notify:
-                        for chat in link_chats:
-                            await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
+                    # if add_notify:
+                    #     for chat in link_chats:
+                    #         await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
 
-                for wallet in data.auto_add:
-                    addresses_handler.add_address(link.cluster_id, wallet, data.blockchain, auto=True)
+                # for wallet in data.auto_add:
+                #     addresses_handler.add_address(link.cluster_id, wallet, data.blockchain, auto=True)
         except Exception as e:
             LOGGER.error(str(e))
+        finally:
+            session.close_all()
 
     @classmethod
     async def report(cls, address: Address, data: Incoming, bot: Bot, addresses_handler: AddressesHandler):
