@@ -43,7 +43,7 @@ async def handle_profile(message: types.Message):
     try:
         user = handler.get_user_by_id(message.from_user.id)
         button = types.InlineKeyboardButton(
-            text='Get my alert history',
+            text='🚨Get my alert history',
             callback_data=CallbackDataModel(
                 action='alert_history',
                 id=user.id

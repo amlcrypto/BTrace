@@ -67,11 +67,11 @@ class KeyboardConstructor:
     @classmethod
     def get_base_reply_keyboard(cls) -> types.ReplyKeyboardMarkup:
         """Returns base menu buttons"""
-        profile = types.KeyboardButton('My profile')
-        add_address = types.KeyboardButton('Add address')
-        clusters = types.KeyboardButton('My clusters')
-        add_cluster = types.KeyboardButton('Add cluster')
-        help_button = types.KeyboardButton('Help')
+        profile = types.KeyboardButton('👤My profile')
+        add_address = types.KeyboardButton('➕Add address')
+        clusters = types.KeyboardButton('👥My clusters')
+        add_cluster = types.KeyboardButton('🏷Add cluster')
+        help_button = types.KeyboardButton('❓Help')
 
         reply_buttons = types.ReplyKeyboardMarkup(
             [[profile, add_address, clusters, add_cluster, help_button]],
@@ -153,21 +153,21 @@ class KeyboardConstructor:
         blockchain = AddressesHandler().get_blockchain_by_id(address.address.blockchain_id)
         with Session(bind=cls._engine) as session:
             session.add(address)
-            msg = '<b>Address</b>:\n<code>{}</code>\n<a href="{}{}">' \
-                'Watch on {}</a>\n<b>Name:</b> {}\n<b>Blockchain: </b>{}\n<b>Watching: </b>{}'.format(
+            msg = '🏠<b>Address</b>:\n<code>{}</code>\n<a href="{}{}">' \
+                'Watch on {}</a>\n🏷<b>Name:</b> {}\n🔗<b>Blockchain: </b>{}\n👀<b>Tracking: </b>{}'.format(
                     address.address.wallet,
                     blockchain.explorer_link_template,
                     address.address.wallet,
                     blockchain.explorer_title,
                     address.address_name,
                     f"{blockchain.title} ({blockchain.tag})",
-                    address.watch
+                    f"{'✅' if address.watch else '❌'}{address.watch}"
                 )
             buttons_data = [
-                ('Rename', 'rename_address', address.id),
-                ('Mute' if address.watch else 'Unmute', 'toggle_mute_address', address.id),
-                ('Delete', 'delete_address', address.id),
-                ('Back', 'view_addresses', address.cluster_id)
+                ('🏷Rename', 'rename_address', address.id),
+                ('🔇Mute' if address.watch else '🔊Unmute', 'toggle_mute_address', address.id),
+                ('🚫Delete', 'delete_address', address.id),
+                ('🔙Back', 'view_addresses', address.cluster_id)
             ]
             markup = types.InlineKeyboardMarkup(inline_keyboard=[
                 [cls.get_inline_button(*x) for x in buttons_data[:2]],

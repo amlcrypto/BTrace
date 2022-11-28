@@ -4,7 +4,6 @@ from sqlalchemy import Column, BOOLEAN, ForeignKey, UniqueConstraint
 from sqlalchemy.dialects.mysql.types import VARCHAR, BIGINT, DATETIME, NUMERIC, SMALLINT, LONGTEXT, FLOAT
 from sqlalchemy.orm import declarative_base, relationship
 
-
 Base = declarative_base()
 
 
@@ -32,12 +31,13 @@ class User(Base):
     )
 
     def __str__(self) -> str:
-        return 'Balance: {:.2f}\nNotification Cost: {:.2f}\nNotification remain: {}\nRegistered: {}\nActive: {}'.format(
+        return '💵 Balance: {:.2f}\n💸 Notification Cost: {:.2f}\n' \
+           '📳 Notification remain: {}\n📆 Registered: {}\nActive: {}'.format(
             self.balance,
             self.notification_cost,
             self.notifications_remain,
             self.created_at.strftime('%Y-%m-%d %H:%M:%S %Z'),
-            self.is_active
+            f"{'✅' if self.is_active else '❌'}{self.is_active}"
         )
 
 
@@ -57,9 +57,9 @@ class Cluster(Base):
         uselist=True
     )
     user = relationship(
-      User,
-      back_populates='clusters',
-      uselist=False
+        User,
+        back_populates='clusters',
+        uselist=False
     )
 
 
