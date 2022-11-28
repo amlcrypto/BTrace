@@ -52,7 +52,7 @@ async def consume_data(bot: Bot):
     await consumer.start()
     try:
         async for message in consumer:
-            result = await NotificationHandler.handle_notification(Incoming.parse_raw(message.value), bot)
+            result = await NotificationHandler.handle_notification(Incoming.parse_raw(message.value), bot, handler)
             if result:
                 await send_data('delete_address', result.wallet, result.blockchain)
             tp = TopicPartition(message.topic, message.partition)
