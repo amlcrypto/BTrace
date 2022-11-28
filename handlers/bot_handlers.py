@@ -55,15 +55,26 @@ class KeyboardConstructor:
         )
 
     @classmethod
+    def get_clusters_choices(cls, ids: List[Tuple[str, int]]) -> types.InlineKeyboardMarkup:
+        markup = types.InlineKeyboardMarkup(inline_keyboard=[])
+        markup.inline_keyboard.append(
+            [cls.get_inline_button(
+                name, 'choose_cluster', id_
+            ) for name, id_ in ids]
+        )
+        return markup
+
+    @classmethod
     def get_base_reply_keyboard(cls) -> types.ReplyKeyboardMarkup:
         """Returns base menu buttons"""
         profile = types.KeyboardButton('My profile')
+        add_address = types.KeyboardButton('Add address')
         clusters = types.KeyboardButton('My clusters')
         add_cluster = types.KeyboardButton('Add cluster')
         help_button = types.KeyboardButton('Help')
 
         reply_buttons = types.ReplyKeyboardMarkup(
-            [[profile, clusters, add_cluster, help_button]],
+            [[profile, add_address, clusters, add_cluster, help_button]],
             resize_keyboard=True
         )
         return reply_buttons
@@ -272,10 +283,7 @@ class NotificationHandler:
 
             for link in links:
                 link_chats = json.loads(link.cluster.chats)
-                # if data.auto_add:
-                #     add_notify = cls.get_auto_add_message(data.auto_add, address.blockchain.tag, link.cluster.name)
-                # else:
-                #     add_notify = None
+
                 user = users_handler.get_user_by_id(link.cluster.user_id)
 
                 send_allowed = all([link.watch, user.is_active, user.notifications_remain,
@@ -306,12 +314,6 @@ class NotificationHandler:
                                                    disable_web_page_preview=True)
                         user = users_handler.reduce_balance(user, address.blockchain.title, data.wallet)
 
-                    # if add_notify:
-                    #     for chat in link_chats:
-                    #         await bot.send_message(chat_id=chat, text=add_notify, parse_mode='HTML')
-
-                # for wallet in data.auto_add:
-                #     addresses_handler.add_address(link.cluster_id, wallet, data.blockchain, auto=True)
         except Exception as e:
             LOGGER.error(str(e))
         finally:

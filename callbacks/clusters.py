@@ -124,6 +124,7 @@ async def handle_mute_cluster(callback: types.CallbackQuery):
     finally:
         handler.session.dispose()
 
+
 async def handle_delete_cluster(callback: types.CallbackQuery):
     """Delete cluster"""
     data = CallbackDataModel.parse_raw(callback.data)

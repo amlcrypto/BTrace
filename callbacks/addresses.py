@@ -6,7 +6,7 @@ from callbacks.base import handle_cancel
 from callbacks.clusters import handle_view_cluster_addresses
 from exceptions import NotExist, InvalidName
 from handlers.bot_handlers import KeyboardConstructor
-from handlers.database_handlers import AddressesHandler
+from handlers.database_handlers import AddressesHandler, ClusterHandler
 from handlers.kafka_handlers import send_data
 from handlers.states import AddAddressState, RenameAddressState
 from logger import LOGGER
@@ -54,6 +54,10 @@ async def get_name(message: types.Message, state: FSMContext):
     else:
         data = await state.get_data()
         cluster_id, wallet, blockchain = data.values()
+        if cluster_id is None:
+            cluster_handler = ClusterHandler()
+            cluster_id = cluster_handler.add_cluster(message.from_user.id, message.text)
+
         name = message.text
         handler = AddressesHandler()
         try:

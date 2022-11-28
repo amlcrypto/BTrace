@@ -6,7 +6,7 @@ from aiogram.dispatcher import FSMContext
 
 from handlers.bot_handlers import KeyboardConstructor
 from handlers.database_handlers import UsersHandler
-from handlers.states import AddClusterState
+from handlers.states import AddClusterState, AddAddressState
 from logger import LOGGER
 from schema.text_messages import TextMessages
 from schema.bot_schema import CallbackDataModel
@@ -83,5 +83,34 @@ async def handle_groups(message: types.Message):
             await message.answer(msg or "You don't added any clusters yet")
     except Exception as e:
         LOGGER.error(str(e))
+    finally:
+        handler.session.dispose()
+
+
+async def handle_choose_cluster(callback: types.CallbackQuery, state: FSMContext):
+    data = CallbackDataModel.parse_raw(callback.data)
+    await state.update_data(cluster_id=data.id)
+    await state.set_state(AddAddressState.wallet)
+    msg = 'Input address'
+    buttons = KeyboardConstructor.get_cancel_button()
+    await callback.answer('')
+    await callback.message.answer(msg, reply_markup=buttons)
+
+
+async def handle_add_address_main(message: types.Message, state: FSMContext):
+    """Handler for add address main menu command"""
+    handler = UsersHandler()
+    try:
+        user = handler.get_user_by_id(message.from_user.id)
+        if not len(user.clusters):
+            await state.update_data(cluster_id=None)
+            await state.set_state(AddAddressState.wallet)
+            msg = 'Input address'
+            buttons = KeyboardConstructor.get_cancel_button()
+        else:
+            ids = [(i.name, i.id) for i in user.clusters]
+            buttons = KeyboardConstructor.get_clusters_choices(ids)
+            msg = 'Choose cluster'
+        await message.answer(msg, reply_markup=buttons)
     finally:
         handler.session.dispose()

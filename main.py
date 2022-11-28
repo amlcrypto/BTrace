@@ -11,7 +11,8 @@ from callbacks.base import handle_cancel, handle_start
 from callbacks.clusters import handle_cluster_detail, add_group, handle_rename_cluster_set_name, \
     handle_rename_cluster, handle_view_cluster_addresses, handle_mute_cluster, handle_delete_cluster, \
     handle_add_address, handle_back_to_cluster
-from callbacks.main_menu import handle_help, handle_profile, handle_groups, handle_group_add, handle_alert_history_csv
+from callbacks.main_menu import handle_help, handle_profile, handle_groups, handle_group_add, \
+    handle_alert_history_csv, handle_choose_cluster, handle_add_address_main
 from config import settings
 from handlers.kafka_handlers import consume_data
 from handlers.handler_filters import CallbackDataActionFilter
@@ -25,6 +26,8 @@ disp = Dispatcher(bot=bot, storage=storage)
 disp.register_message_handler(handle_cancel, lambda x: x.text == 'Cancel')
 disp.register_message_handler(handle_start, Command(commands=['start'], prefixes='/'))
 disp.register_message_handler(handle_help, lambda x: x.text == 'Help')
+disp.register_message_handler(handle_add_address_main, lambda x: x.text == 'Add address')
+disp.register_callback_query_handler(handle_choose_cluster, CallbackDataActionFilter(action='choose_cluster'))
 disp.register_message_handler(handle_profile, lambda x: x.text == 'My profile')
 disp.register_callback_query_handler(handle_alert_history_csv, CallbackDataActionFilter(action='alert_history'))
 disp.register_message_handler(handle_groups, lambda x: x.text == 'My clusters')

@@ -10,3 +10,4 @@ alembic.ini
 config.json
 *.csv
 log/*
+file.png

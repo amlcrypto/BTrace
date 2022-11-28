@@ -87,7 +87,7 @@ class ClusterHandler(DatabaseHandler):
     def __init__(self):
         super(ClusterHandler, self).__init__(self.__db_name)
 
-    def add_cluster(self, user_id: int, name: str) -> None:
+    def add_cluster(self, user_id: int, name: str) -> int:
         """Add new cluster"""
         self.check_name(name)
         cluster = Cluster(
@@ -98,6 +98,8 @@ class ClusterHandler(DatabaseHandler):
         with Session(self.session) as session:
             session.add(cluster)
             session.commit()
+            session.refresh(cluster)
+        return cluster.id
 
     def get_cluster_by_id(self, cluster_id: int) -> Cluster:
         """Get cluster by id"""
