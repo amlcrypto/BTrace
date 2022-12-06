@@ -72,7 +72,7 @@ async def handle_cluster_detail(message: types.Message):
     handler = ClusterHandler()
     try:
         cluster = handler.get_cluster_by_id(int(cluster_id))
-        if not cluster:
+        if not cluster or cluster.user_id != int(message.from_user.id):
             await message.answer('Cluster not exist')
             await handle_groups(message)
         else:

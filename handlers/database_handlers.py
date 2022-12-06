@@ -188,7 +188,9 @@ class AddressesHandler(DatabaseHandler):
         with Session(self.session) as session:
             link: ClusterAddress = session.query(ClusterAddress).join(Cluster).options(
                 joinedload(ClusterAddress.address)
-            ).filter(
+            ).options(joinedload(
+                ClusterAddress.cluster
+            )).filter(
                 ClusterAddress.id == address_id
             ).one_or_none()
             if not link:

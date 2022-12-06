@@ -86,7 +86,11 @@ async def handle_address_detail(message: types.Message):
         markup = KeyboardConstructor.get_base_reply_keyboard()
         await message.answer(msg, reply_markup=markup)
     else:
-        msg, markup = KeyboardConstructor.get_address_detail(address)
+        if address.cluster.user_id != int(message.from_user.id):
+            msg = 'Address not exist'
+            markup = KeyboardConstructor.get_base_reply_keyboard()
+        else:
+            msg, markup = KeyboardConstructor.get_address_detail(address)
         await message.answer(msg, reply_markup=markup, disable_web_page_preview=True)
     finally:
         handler.session.dispose()
