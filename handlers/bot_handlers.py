@@ -106,20 +106,20 @@ class KeyboardConstructor:
             session.add(cluster)
             addresses = [x for x in cluster.addresses if x.address.add_success]
             pages = math.ceil(len(addresses) / per_page)
-            msg = [f'<b>Addresses: (page {page} of {pages})</b>']
+            msg = [f'🏠<b>Addresses: (page {page} of {pages})</b>']
             for link in addresses[start:end]:
                 row = f"{link.address.wallet[:5]}...{link.address.wallet[-5:]} /address_{link.id}"
                 msg.append(row)
 
         markup = types.InlineKeyboardMarkup(inline_keyboard=[])
         buttons = []
-        for text, action in (('Add address', 'add_address'), ('Back', 'back_to_cluster')):
+        for text, action in (('➕Add address', 'add_address'), ('🔙Back', 'back_to_cluster')):
             buttons.append(cls.get_inline_button(text, action, cluster.id))
         pagination = []
         if page > 1:
-            pagination.append(cls.get_inline_button('Previous', 'view_addresses', cluster.id, page=page - 1))
+            pagination.append(cls.get_inline_button('⬅️Previous', 'view_addresses', cluster.id, page=page - 1))
         if page < pages:
-            pagination.append(cls.get_inline_button('Next', 'view_addresses', cluster.id, page=page + 1))
+            pagination.append(cls.get_inline_button('➡️Next', 'view_addresses', cluster.id, page=page + 1))
 
         markup.inline_keyboard.append(buttons)
         if pagination:
@@ -181,17 +181,17 @@ class KeyboardConstructor:
         with Session(bind=cls._engine) as session:
             session.add(cluster)
             ids = [x.address_id for x in cluster.addresses]
-            msg = '<b>Name:</b>\n{}\n<b>Addresses count:</b> {}\n<b>Watching: </b>{}'.format(
+            msg = '🏷<b>Name:</b>{}\n🔢<b>Addresses count:</b> {}\n👀<b>Tracking: </b>{}'.format(
                 cluster.name,
                 AddressesHandler().get_added_count(ids),
-                cluster.watch
+                f"{'✅'if cluster.watch else '❌'}{cluster.watch}"
             )
             buttons_data = [
-                ('View addresses', 'view_addresses'),
-                ('Add address', 'add_address'),
-                ('Mute' if cluster.watch else 'Unmute', 'toggle_mute_cluster'),
-                ('Rename', 'rename_cluster'),
-                ('Delete', 'delete_cluster'),
+                ('👁‍🗨View addresses', 'view_addresses'),
+                ('➕Add address', 'add_address'),
+                ('🔇Mute' if cluster.watch else '🔊Unmute', 'toggle_mute_cluster'),
+                ('🏷Rename', 'rename_cluster'),
+                ('🚫Delete', 'delete_cluster'),
             ]
             markup = types.InlineKeyboardMarkup(inline_keyboard=[
                 [cls.get_inline_button(x, y, cluster.id) for x, y in buttons_data[:3]],
@@ -241,7 +241,7 @@ class NotificationHandler:
         tx_link = blockchain.tx_link_template
         if tx_hash and tx_link:
             tx_link += tx_hash
-        msg = 'Transaction: {}\nCluster: {}\nBlockchain: {}\nSender: {}\nReceiver: {}\nVALUE: {:.2f} {}\nTIME (UTC): {}'.format(
+        msg = '📍Transaction: {}\n🔒Cluster: {}\n🔗Blockchain: {}\n📤Sender: {}\n📥Receiver: {}\n💰VALUE: {:.2f} {}\n⏱TIME (UTC): {}'.format(
             cls.get_link(tx_link, 'Watch on ' + blockchain.explorer_title),
             cluster.name,
             f"{blockchain.title} ({blockchain.tag})",
@@ -302,7 +302,7 @@ class NotificationHandler:
                         markup = types.InlineKeyboardMarkup(inline_keyboard=[])
                         if transaction.dst not in addresses:
                             button = KeyboardConstructor.get_inline_button(
-                                text='Add address to trace',
+                                text='➕Add address to trace',
                                 action='add_address',
                                 data=link.cluster_id,
                                 blk=address.blockchain_id
