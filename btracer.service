@@ -3,8 +3,8 @@ Description=BTracer telegram bot
 After=network.target
 
 [Service]
-User=stanislav
-Group=stanislav
+User=artem
+Group=artem
 WorkingDirectory=/opt/scripts/BTrace
 Environment="PATH=/opt/scripts/BTrace/venv/bin"
 ExecStart=/opt/scripts/BTrace/venv/bin/python main.py
