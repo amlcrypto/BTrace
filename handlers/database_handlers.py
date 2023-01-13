@@ -4,12 +4,13 @@ import json
 from typing import Optional, List, Tuple
 
 import pytz
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 from sqlalchemy.orm import joinedload, Session
 
 from database.factory import DatabaseFactory
-from database.models import User, Cluster, Address, Blockchain, ClusterAddress, AlertHistory
+from database.models import User, Cluster, Address, Blockchain, ClusterAddress, AlertHistory, Transaction
 from exceptions import NotExist, InvalidName
+from logger import LOGGER
 
 
 class DatabaseHandler:
@@ -78,7 +79,6 @@ class UsersHandler(DatabaseHandler):
         """Returns list of alerts"""
         with Session(self.session) as session:
             return session.query(AlertHistory).filter(AlertHistory.user_id == user_id).all()
-
 
 class ClusterHandler(DatabaseHandler):
     """Clusters database handlers"""
@@ -312,3 +312,40 @@ class AddressesHandler(DatabaseHandler):
                     ClusterAddress.watch == 1
                 )
             ).all()
+
+class TransactionHandler(DatabaseHandler):
+    """Addresses database handler"""
+
+    __db_name = 'tracer'
+
+    def __init__(self):
+        super(TransactionHandler, self).__init__(self.__db_name)
+
+    def add_transaction(self, data: list[dict]) -> bool:
+        transactions = []
+        for d in data:
+            transaction = Transaction(
+                wallet_1= d['wallet_1'],
+                wallet_2= d['wallet_2'],
+                balance = d['balance'],
+                direction = d['direction'],
+                token= d['token'],
+                date= datetime.datetime.utcfromtimestamp(d['date']).strftime('%Y-%m-%d %H:%M:%S'),
+                blockchain=d['blockchain']
+            )
+            transactions.append(transaction)
+
+        with Session(self.session) as session:
+            session.bulk_save_objects(transactions)
+            session.commit()
+        return True
+
+    def get_transaction(self, wallet, date_user_created):
+        with Session(self.session) as session:
+            transactions: list(Transaction) = session.query(Transaction).filter(
+                or_(
+                    Transaction.wallet_1 == wallet,
+                    Transaction.wallet_2 == wallet
+                )
+            ).order_by(Transaction.id).limit(200).all()
+            return transactions

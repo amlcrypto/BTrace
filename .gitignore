@@ -11,3 +11,7 @@ config.json
 *.csv
 log/*
 file.png
+mysql/
+my.cnf
+graphs/img/*
+docker-compose.yml

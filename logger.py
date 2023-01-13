@@ -24,5 +24,7 @@ HANDLER = TimedRotatingFileHandler(
 )
 HANDLER.setFormatter(FORMATTER)
 HANDLER.setLevel(logging.ERROR)
+HANDLER.setLevel(logging.INFO)
 LOGGER.addHandler(HANDLER)
 LOGGER.setLevel(logging.ERROR)
+LOGGER.setLevel(logging.INFO)

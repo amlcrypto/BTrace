@@ -10,12 +10,15 @@ from sqlalchemy.orm import Session
 
 from config import PATH
 from database.factory import DatabaseFactory
-from database.models import User, Cluster, Blockchain, ClusterAddress, Address
+from database.models import User, Cluster, Blockchain, ClusterAddress, Address, Transaction
 from exceptions import NotExist
-from handlers.database_handlers import AddressesHandler, ClusterHandler, UsersHandler
+from handlers.database_handlers import AddressesHandler, ClusterHandler, UsersHandler, TransactionHandler
 from logger import LOGGER
 from schema.bot_schema import CallbackDataModel
 from schema.kafka_schema import Incoming, Transaction
+from exchange_and_bridge_controller import Controller
+from graphs.graph import Graph
+import time
 
 
 class KeyboardConstructor:
@@ -226,14 +229,14 @@ class NotificationHandler:
         )
 
     @classmethod
-    def format_transaction_message(
+    async def format_transaction_message(
             cls,
             tx_hash: str,
             wallet: str,
             transaction: Transaction,
             blockchain: Blockchain,
             cluster: Cluster,
-            name: str
+            name: str,
     ) -> str:
         """Returns message for transaction"""
         src_name = ' ' + name if wallet == transaction.src else ''
@@ -291,7 +294,7 @@ class NotificationHandler:
                     session.add(link.cluster)
                     addresses = set(x.address for x in link.cluster.addresses)
                     for transaction in data.transactions:
-                        msg = cls.format_transaction_message(
+                        msg = await cls.format_transaction_message(
                             tx_hash=transaction.tx_hash,
                             wallet=data.wallet,
                             transaction=transaction,
@@ -308,9 +311,14 @@ class NotificationHandler:
                                 blk=address.blockchain_id
                             )
                             markup.inline_keyboard.append([button])
+                        gr = Graph()
                         for chat in link_chats:
-                            await bot.send_message(chat, msg, reply_markup=markup, parse_mode='HTML',
-                                                   disable_web_page_preview=True)
+                            now = gr.draw_graph(data.wallet, user.id ,user.created_at, transaction.created_at )
+                            photo = open(f'{PATH}/graphs/img/{user.id}-{transaction.created_at}-{now}.jpg', 'rb')
+                            # SVG/GIF
+                            #first transaction -> another colors
+                            await bot.send_photo(chat_id=chat, caption = msg, parse_mode='HTML', reply_markup=markup,
+                            photo=photo)
                         user = users_handler.reduce_balance(user, address.blockchain.title, data.wallet)
 
         except Exception as e:
@@ -332,7 +340,7 @@ class NotificationHandler:
                     LOGGER.error(str(e))
                     return
             else:
-                result = 'Something goes wrong, please contact to administration'
+                result = 'If something goes wrong, please contact administration'
                 try:
                     cluster = ClusterHandler().get_cluster_by_id(data.cluster_id)
                 except Exception as e:
@@ -369,9 +377,53 @@ class NotificationHandler:
             LOGGER.error(str(e))
         else:
             if data.action == 'alert':
+                # add new trx in tracer.transactions
+                tr_handler = TransactionHandler()
+                # compare address with data.transaction. Maybe you shoud use for circle
+                LOGGER.info(f'address: {address}, data: {data}, bot: {bot}, addresses_handler: {addresses_handler}')
+                transaction_list = []
+                for transaction in data.transactions:
+                    data_new = {}
+                    data_new['wallet_1'] = transaction.src
+                    data_new['wallet_2'] = transaction.dst
+                    data_new['blockchain'] = data.blockchain
+                    data_new['direction'] = ''
+                    data_new['balance'] = transaction.value
+                    data_new['token'] = transaction.token
+                    data_new['date'] = transaction.created_at
+                    transaction_list.append(data_new)
+                tr_handler.add_transaction(transaction_list)
                 handler = cls.alert
             else:
                 handler = cls.report
             await handler(address, data, bot, addresses_handler)
         # finally:
             # addresses_handler.session.dispose()
+
+        # LOGGER.info(f'transaction.dst: {transaction.dst}')
+        # src_name = ' '
+        # alert = ''
+        # dest_name = ''
+        # if (wallet == transaction.src):
+        #     src_name += name
+
+        #     controller = Controller()
+        #     #add check DEX, CEX, bridge address
+        #     status = await controller.check_wallet(transaction.dst, blockchain.title)
+        #     LOGGER.info('status:{}'.format(str(status)))
+        #     if (status[0] == "SIMPLE_ADDRESS"):
+        #         pass
+        #     elif (status[0] == "BRIDGE"):
+        #         alert = '\n 🔥 ALARM: This address has transferred funds to the bridge!\nNext, we will send the output transaction in another blockchain. '
+        #         dest_name = status[1]
+        #     elif (status[0] == "DEX"):
+        #         alert = '\n 🔥 ALARM: This address sent funds to DEX.'
+        #         dest_name = status[1]
+        #     elif (status[0] == "CEX"):
+        #         alert = '\n 🔥 ALARM: This address sent funds to CEX.'
+        #         dest_name = status[1]
+        #     elif (status[0] == "FARMING"):
+        #         alert = '\n 🔥 ALARM: This address sent funds to Farming pool.'
+        #         dest_name = status[1]
+
+        # dst_name = ' ' + name if wallet == transaction.dst else ''
