@@ -1,7 +1,7 @@
 """Bot database models"""
 
 from sqlalchemy import Column, BOOLEAN, ForeignKey, UniqueConstraint
-from sqlalchemy.dialects.mysql.types import VARCHAR, BIGINT, DATETIME, NUMERIC, SMALLINT, LONGTEXT, FLOAT
+from sqlalchemy.dialects.mysql.types import VARCHAR, BIGINT, DATETIME, NUMERIC, SMALLINT, LONGTEXT, FLOAT, INTEGER
 from sqlalchemy.orm import declarative_base, relationship
 
 Base = declarative_base()
@@ -146,3 +146,15 @@ class AlertHistory(Base):
         back_populates='alerts',
         uselist=False
     )
+
+class Transaction(Base):
+    """Transaction for the graph"""
+    __tablename__ = 'transactions'
+    id = Column(BIGINT(unsigned=True), primary_key=True)
+    wallet_1 = Column(VARCHAR(100), nullable=False)
+    wallet_2 = Column(VARCHAR(100), nullable=False)
+    blockchain = Column(VARCHAR(100), nullable=False)
+    balance = Column(FLOAT(), nullable=False)
+    date = Column(DATETIME)
+    direction = Column(VARCHAR(100), nullable=False)
+    token = Column(VARCHAR(100), nullable=False)

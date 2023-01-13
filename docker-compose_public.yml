@@ -1,0 +1,25 @@
+version: "3.3"
+
+services:
+  mysql:
+    image: mysql:8.0
+    restart: always
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      MYSQL_ROOT_HOST: '%'
+      MYSQL_DATABASE:
+      MYSQL_USER:
+      MYSQL_PASSWORD:
+      MYSQL_ROOT_PASSWORD:
+    ports:
+      - "3306:3306"
+    networks:
+      - mern-app
+    volumes:
+      - ./mysql:/var/lib/mysql
+      - ./my.cnf:/etc/mysql/conf.d/custom.cnf:ro
+      - /etc/localtime:/etc/localtime:ro
+
+networks:
+  mern-app:
+    driver: bridge

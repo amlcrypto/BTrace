@@ -46,7 +46,7 @@ async def consume_data(bot: Bot):
         bootstrap_servers=[settings.kafka],
         auto_offset_reset='latest',
         enable_auto_commit=False,
-        group_id='BOT',
+        group_id='BOT_1',
         value_deserializer=lambda x: str(x.decode('utf-8')),
     )
     await consumer.start()
@@ -54,7 +54,8 @@ async def consume_data(bot: Bot):
         async for message in consumer:
             result = await NotificationHandler.handle_notification(Incoming.parse_raw(message.value), bot, handler)
             if result:
-                await send_data('delete_address', result.wallet, result.blockchain)
+                #await send_data('delete_address', result.wallet, result.blockchain)
+                pass
             tp = TopicPartition(message.topic, message.partition)
             await consumer.commit({tp: message.offset + 1})
     except Exception as e:
