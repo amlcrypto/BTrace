@@ -87,12 +87,13 @@ class Graph():
 
             nd_colors = ['green']*len(G1.nodes())
             i = 0
-            for node in G1.nodes():
+            for node in pos.keys():
+                LOGGER.info(f'{node}-{nodes_crop[0][1]}')
                 if node == nodes_crop[0][1]:
                     nd_colors[i] = 'red'
                     break
-            else:
-                i += 1
+                else:
+                    i += 1
 
             edge_colors = ['green'] * len(G1.edges())
             i = 0
@@ -126,7 +127,7 @@ class Graph():
 
 
             G = G1
-            pos=nx.shell_layout(G)
+            #pos=nx.shell_layout(G)
             nx.draw_networkx_nodes(G, pos, node_color=nd_colors, node_size= 500)
             nx.draw_networkx_labels(G, pos, clip_on=False,  horizontalalignment= 'left')
             curved_edges = [edge for edge in G.edges() if reversed(edge) in G.edges()]
